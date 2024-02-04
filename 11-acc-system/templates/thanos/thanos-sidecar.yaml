@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    operated-prometheus: "true"
+  name: thanos-sidecar
+  namespace: {{ prometheus_ns }}
+spec:
+  type: ClusterIP
+  ports:
+  - name: grpc
+    nodePort: 30003
+    port: 10901
+    protocol: TCP
+    targetPort: grpc
+  selector:
+    app: prometheus
+  sessionAffinity: None
+  type: NodePort
+status:
+  loadBalancer: {}

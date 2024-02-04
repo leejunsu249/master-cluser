@@ -1,0 +1,22 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: accordion-storage
+provisioner: rbd.csi.ceph.com
+parameters:
+  clusterID: "{{ ceph_fsid }}"
+  pool: "{{ ceph_fsname }}"
+  thickProvision: "false"
+  imageFeatures: layering
+  csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: acc-system
+  csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: acc-system
+  csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: acc-system
+  csi.storage.k8s.io/fstype: ext4
+allowVolumeExpansion: true
+mountOptions:
+- discard
+reclaimPolicy: Retain

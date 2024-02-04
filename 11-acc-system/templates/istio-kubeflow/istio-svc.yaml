@@ -1,0 +1,133 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authservice
+  namespace: istio-system
+spec:
+  ports:
+  - name: http-authservice
+    port: 8080
+    targetPort: http-api
+  publishNotReadyAddresses: true
+  selector:
+    app: authservice
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cluster-local-gateway
+    install.operator.istio.io/owning-resource: unknown
+    istio: cluster-local-gateway
+    istio.io/rev: default
+    operator.istio.io/component: IngressGateways
+    release: istio
+  name: cluster-local-gateway
+  namespace: istio-system
+spec:
+  ports:
+  - name: status-port
+    port: 15020
+    protocol: TCP
+    targetPort: 15020
+  - name: http2
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: cluster-local-gateway
+    istio: cluster-local-gateway
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: istio-ingressgateway
+    install.operator.istio.io/owning-resource: unknown
+    istio: ingressgateway
+    istio.io/rev: default
+    operator.istio.io/component: IngressGateways
+    release: istio
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  ports:
+  - name: status-port
+    port: 15021
+    protocol: TCP
+    targetPort: 15021
+  - name: http2
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: tcp
+    port: 31400
+    protocol: TCP
+    targetPort: 31400
+  - name: tls
+    port: 15443
+    protocol: TCP
+    targetPort: 15443
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: istiod
+    install.operator.istio.io/owning-resource: unknown
+    istio: pilot
+    istio.io/rev: default
+    operator.istio.io/component: Pilot
+    release: istio
+  name: istiod
+  namespace: istio-system
+spec:
+  ports:
+  - name: grpc-xds
+    port: 15010
+    protocol: TCP
+  - name: https-dns
+    port: 15012
+    protocol: TCP
+  - name: https-webhook
+    port: 443
+    protocol: TCP
+    targetPort: 15017
+  - name: http-monitoring
+    port: 15014
+    protocol: TCP
+  selector:
+    app: istiod
+    istio: pilot
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: net-istio
+    app.kubernetes.io/name: knative-serving
+    app.kubernetes.io/version: 1.8.0
+    experimental.istio.io/disable-gateway-port-translation: "true"
+    networking.knative.dev/ingress-provider: istio
+  name: knative-local-gateway
+  namespace: istio-system
+spec:
+  ports:
+  - name: http2
+    port: 80
+    targetPort: 8081
+  selector:
+    app: cluster-local-gateway
+    istio: cluster-local-gateway
+  type: ClusterIP

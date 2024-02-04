@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xlog-apiserver
+  namespace: acc-system
+  labels:
+    app: xlog-apiserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xlog-apiserver
+  template:
+    metadata:
+      labels:
+        app: xlog-apiserver
+    spec:
+      imagePullSecrets:
+        - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: accordion-role
+                    operator: In
+                    values:
+                      - infra
+              weight: 100
+      tolerations:
+        - effect: NoSchedule
+          key: accordion-role
+          operator: Equal
+          value: infra
+      serviceAccount: xlog-apiserver
+      containers:
+      - name: apiserver
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/xlog-apiserver:{{ xlog_apiserver_version }}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP

@@ -1,0 +1,16 @@
+---
+- name: Create uuid
+  shell: >
+    echo  "{{ 1000 | random | to_uuid | lower }}"
+  register: uuid
+
+- name: print uuid
+  debug: msg="{{ uuid.stdout }}"
+
+- name: Add external label 
+  shell: >
+    kubectl patch prometheus {{ prometheus_name }} -n {{ prometheus_ns }} --type='json' -p='[{"op": "add", "path": "/spec/externalLabels", "value": {"cluster": "{{ uuid.stdout }}" } }]'
+
+- name: Add thanos-sidecar
+  shell: >
+    kubectl patch prometheus {{ prometheus_name }} -n {{ prometheus_ns }} --type='json' -p='[{"op": "add", "path": "/spec/thanos", "value": {"baseImage": "{{ base_registry_address }}:{{ base_registry_port }}/thanos", "objectStorageConfig": {"key": "thanos-objectc-cofnig.yaml", "name": "thanos-objstore-config"}, "version": "v0.28.0"} }]'

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+{% if minio_ha == "yes" %}
+  name: minio-ha
+{% else %}
+  name: minio
+{% endif %}
+  namespace: acc-system
+spec:
+  type: ClusterIP
+{% if minio_ha == "yes" %}
+  clusterIP: {{ service_ip.stdout }}.1.21
+{% else %}
+  clusterIP: {{ service_ip.stdout }}.1.12
+{% endif %}
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+{% if minio_ha == "yes" %}
+    app: minio-ha
+{% else %}
+    app: minio
+{% endif %}

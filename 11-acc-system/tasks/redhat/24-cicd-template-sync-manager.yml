@@ -1,0 +1,30 @@
+###############################################################################
+# cicd-template-sync-manager
+###############################################################################
+- name: cicd-template-sync-manager addon directory
+  file: path={{ kube_addon_dir }}/acc-system/cicd-template-sync-manager state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  template:
+    src: "cicd-template-sync-manager/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-template-sync-manager/{{ item }}"
+  with_items:
+    - cicd-template-sync-manager-cm.yaml
+    - cicd-template-sync-manager-deploy.yaml
+    - cicd-template-sync-manager-rolebinding.yaml
+    - cicd-template-sync-manager-role.yaml
+    - cicd-template-sync-manager-sa.yaml
+    - cicd-template-sync-manager-clusterrole.yaml
+    - cicd-template-sync-manager-clusterrolebinding.yaml
+
+- name: Deploy cicd-template-sync-manager setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/cicd-template-sync-manager
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

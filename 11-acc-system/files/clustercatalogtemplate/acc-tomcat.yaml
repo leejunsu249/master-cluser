@@ -1,0 +1,814 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterCatalogTemplate
+metadata:
+  name: acc-tomcat
+  annotations:
+    accordions.co.kr/description: |
+      acc-tomcat
+      ----
+      ```
+      아파치 소프트웨어 재단에서 개발한 서블릿 컨테이너(또는 웹 컨테이너)만 있는 웹 애플리케이션 서버인
+      아파치 톰캣(Apache Tomcat)을 기반으로 소스빌드(war), 컨테이너 이미지 빌드, 클러스터에 배포 과정(CI/CD)을
+      포함한 아코디언에서 제공하는 카탈로그입니다.
+      ```
+      1. 스펙
+          * J2EE8 Specificataion
+          * Support for JDK8, 11
+          * 기본 메모리 설정
+            * 컨테이너 `1.5 GB` (`resource.limit=1.5Gi`)
+            * 할당된 컨테이너의 `80%` 를 힙메모리 사용 (`-XX:InitialRAMPercentage=80.0 -XX:MaxRAMPercentage=80.0`)
+      2. 배포리소스
+          * Deployemnt
+          * Service
+    accordions.co.kr/logo.png-data: >-
+      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
+    accordions.co.kr/logo.resized: "true"
+    accordions.co.kr/logo.size: "100,100"
+    accordions.co.kr/summary: Accordion tomcat
+spec:
+  deployStrategy:
+    defaultPolicy: Apply
+    image:
+      archiveCount: 5
+      registryName: user-registry
+  pipelineTemplateRef:
+    clusterScope: true
+    name: acc-vcs-jbuild-tomcat
+  resourceValues:
+    - name: tomcat
+      values:
+        deploy:
+          env:
+            - name: JAVA_HEAP_OPTS
+              valueFrom:
+                type: literal
+                value: "-XX:InitialRAMPercentage=80.0 -XX:MaxRAMPercentage=80.0"
+            - name: JAVA_OPTS
+              valueFrom:
+                type: literal
+                value: >-
+                  -Duser.timezone=GMT+09:00 $(JAVA_HEAP_OPTS)
+                  $(DEFAULT_HEAP_OPTS) -XX:+UseParallelGC
+                  -XX:+UseParallelOldGC -XX:+PrintGCDetails
+                  -XX:+HeapDumpOnOutOfMemoryError
+                  -XX:HeapDumpPath=$CATALINA_HOME/logs/$HOSTNAME/heapdump
+                  -verbose:gc
+                  -Xloggc:$CATALINA_HOME/logs/$HOSTNAME/gclog/gc-%t.log
+                  -Djava.security.egd=file:/dev/./urandom
+                  -Dcatalina.host=$HOSTNAME
+                  -Dcatalina.logdir=$CATALINA_HOME/logs/$HOSTNAME
+          resources:
+            limits:
+              cpu: "0"
+              memory: 1.5Gi
+            requests:
+              cpu: "0"
+              memory: 1.5Gi
+          volumes:
+            - from:
+                path: /etc/localtime
+                type: hostPath
+                volumeMounts:
+                  mountPath: /etc/localtime
+                  readOnly: true
+              name: localtime
+        ports:
+          - containerPort: 8080
+            name: http-port
+            servicePort: 8080
+  template:
+    resources:
+      - name: tomcat
+        spec: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: {{{.CATALOG.NAME}}}
+          spec:
+            selector:
+              matchLabels:
+                app: {{{.CATALOG.NAME}}}
+            replicas: {{.values.deploy.replicas}}
+            strategy:
+              type: {{.values.deploy.updateStrategy}}
+            template:
+              metadata:
+                annotations:
+                  monitoring.accordions.co.kr/type: tomcat8
+                labels:
+                  app: {{{.CATALOG.NAME}}}
+                  app.kubernetes.io/version: '{{{.BUILD.VERSION}}}'
+              spec:
+                {{- if .values.deploy.tolerations }}
+                tolerations:
+                {{- range $i, $t := .values.deploy.tolerations }}
+                - key: {{$t.key}}
+                  {{- if eq $t.operator "Equal" }}
+                  operator: {{$t.operator}}
+                  value: {{$t.value}}
+                  effect: {{$t.effect}}
+                  {{- else }}
+                  operator: {{$t.operator}}
+                  {{- end}}
+                {{- end}}
+                {{- end}}
+                {{ if ne .values.deploy.topologyKey "" }}
+                topologySpreadConstraints:
+                - labelSelector:
+                    matchLabels:
+                      app: {{{.CATALOG.NAME}}}
+                  maxSkew: 1
+                  topologyKey: {{ .values.deploy.topologyKey }}
+                  whenUnsatisfiable: DoNotSchedule
+                - labelSelector:
+                    matchLabels:
+                      app: {{{.CATALOG.NAME}}}
+                  maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: ScheduleAnyway
+                {{- end }}
+                nodeSelector:
+                {{- range $i, $s := .values.deploy.nodeSelector}}
+                  {{$s.key}}: {{$s.value}}
+                {{- end}}
+                imagePullSecrets:
+                  - name: {{{.IMAGE.REGISTRYNAME}}}
+                {{- range $i, $secret := .values.deploy.imagePullSecrets}}
+                  - name: {{$secret}}
+                {{- end}}
+                containers:
+                - name: {{{.CATALOG.NAME}}}
+                  image: {{{.IMAGE.NAME}}}
+                  imagePullPolicy: {{.values.deploy.imagePullPolicy}}
+                  lifecycle:
+                    preStop:
+                      exec:
+                        command:
+                          - /usr/local/tomcat/bin/shutdown.sh
+                  {{- with $resources := .values.deploy.resources}}
+                  resources:
+                    {{- with $requests := $resources.requests}}
+                    requests:
+                      cpu: '{{$requests.cpu}}'
+                      memory: '{{$requests.memory}}'
+                    {{- end}}
+                    {{- with $limits := $resources.limits}}
+                    limits:
+                      cpu: '{{$limits.cpu}}'
+                      memory: '{{$limits.memory}}'
+                      {{- if ne $limits.gpu "0"}}
+                      nvidia.com/gpu: '{{$limits.gpu}}'
+                      {{- end}}
+                    {{- end}}
+                  {{- end}}
+                  ports:
+                  {{- range $i, $p := .values.ports}}
+                    - containerPort: {{$p.containerPort}}
+                      protocol: {{$p.protocol}}
+                      name: {{$p.name}}
+                  {{- end}}
+                  env:
+                  {{ if eq .values.deploy.resources.limits.memory "0" }}
+                    - name: DEFAULT_HEAP_OPTS
+                      value: -Xms1024m -Xmx1024m
+                  {{- else }}
+                    - name: DEFAULT_HEAP_OPTS
+                      value: ""
+                  {{- end }}
+                  {{- range $i, $e := .values.deploy.env}}
+                    {{- if eq $e.valueFrom.type "literal"}}
+                    - name: {{$e.name}}
+                      value: {{$e.valueFrom.value | quote }}
+                    {{- else if eq $e.valueFrom.type "configMap"}}
+                    - name: {{$e.name}}
+                      valueFrom:
+                        configMapKeyRef:
+                          name: {{$e.valueFrom.name}}
+                          key: {{$e.valueFrom.key}}
+                    {{- else if eq $e.valueFrom.type "secret"}}
+                    - name: {{$e.name}}
+                      valueFrom:
+                        secretKeyRef:
+                          name: {{$e.valueFrom.name}}
+                          key: {{$e.valueFrom.key}}
+                    {{- end}}
+                  {{- end}}
+                {{- if .values.deploy.probes}}
+                {{- $list := list "startupProbe" "readinessProbe" "livenessProbe"}}
+                {{- range $i, $p := .values.deploy.probes}}
+                  {{- if has $p.type $list}}
+                  {{- $list = without $list $p.type}}
+                  {{$p.type}}:
+                    initialDelaySeconds: {{$p.initialDelaySeconds}}
+                    timeoutSeconds: {{$p.timeoutSeconds}}
+                    periodSeconds: {{$p.periodSeconds}}
+                    successThreshold: {{$p.successThreshold}}
+                    failureThreshold: {{$p.failureThreshold}}
+                  {{- if eq $p.action.type "exec"}}
+                    exec:
+                      command:
+                      {{- range $j, $cmd := $p.action.command}}
+                      - {{$cmd}}
+                      {{- end}}
+                  {{- else if eq $p.action.type "tcpSocket"}}
+                    tcpSocket:
+                      port: {{$p.action.port}}
+                      host: {{$p.action.host}}
+                  {{- else if eq $p.action.type "httpGet"}}
+                    httpGet:
+                      path: {{$p.action.path}}
+                      port: {{$p.action.port}}
+                      host: {{$p.action.host}}
+                      scheme: {{$p.action.scheme}}
+                      httpHeaders:
+                      {{- range $j, $h := $p.action.httpHeaders}}
+                      - name: {{$h.name}}
+                        value: {{$h.value}}
+                      {{- end}}
+                  {{- end}}
+                  {{- end}}
+                {{- end}}
+                {{- end}}
+                  volumeMounts:
+                  {{- range $i, $v := .values.deploy.volumes}}
+                  {{- range $j, $m := $v.from.volumeMounts}}
+                    - name: {{$v.name}}
+                      mountPath: {{$m.mountPath}}
+                      readOnly: {{$m.readOnly}}
+                      subPath: {{$m.subPath}}
+                  {{- end}}
+                  {{- end}}
+                volumes:
+                {{- range $i, $v := .values.deploy.volumes}}
+                  {{- if eq $v.from.type "emptyDir"}}
+                  - name: {{$v.name}}
+                    emptyDir:
+                      medium: {{$v.from.medium}}
+                  {{- else if eq $v.from.type "configMap"}}
+                  - name: {{$v.name}}
+                    configMap:
+                      name: {{$v.from.name}}
+                      defaultMode: {{toDecimal $v.from.defaultMode}}
+                      items:
+                      {{- range $j, $item := $v.from.items}}
+                        - key: {{$item.key}}
+                          path: {{$item.path}}
+                      {{- end}}
+                  {{- else if eq $v.from.type "secret"}}
+                  - name: {{$v.name}}
+                    secret:
+                      secretName: {{$v.from.name}}
+                      defaultMode: {{toDecimal $v.from.defaultMode}}
+                      items:
+                      {{- range $j, $item := $v.from.items}}
+                        - key: {{$item.key}}
+                          path: {{$item.path}}
+                      {{- end}}
+                  {{- else if eq $v.from.type "persistentVolumeClaim"}}
+                  - name: {{$v.name}}
+                    persistentVolumeClaim:
+                      claimName: {{$v.from.name}}
+                  {{- else if eq $v.from.type "hostPath"}}
+                  - name: {{$v.name}}
+                    hostPath:
+                      path: {{$v.from.path}}
+                      type: {{$v.from.pathType}}
+                  {{- end}}
+                {{- end}}
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: {{{.CATALOG.NAME}}}
+          spec:
+            type: {{.values.serviceType}}
+            ports:
+            {{- range $i, $p := .values.ports}}
+            - port: {{$p.servicePort}}
+              protocol: {{$p.protocol}}
+              name: {{$p.name}}
+              targetPort: {{$p.containerPort}}
+              {{- if ne $p.nodePort 0 }}
+              nodePort: {{$p.nodePort}}
+              {{- end}}
+            {{- end}}
+            selector:
+              app: {{{.CATALOG.NAME}}}
+        valueschema:
+          properties:
+            deploy:
+              properties:
+                env:
+                  description: 컨테이너 환경변수
+                  items:
+                    properties:
+                      name:
+                        description: 환경변수 이름
+                        pattern: "^[-._a-zA-Z][-._a-zA-Z0-9]*$"
+                        type: string
+                      valueFrom:
+                        anyOf:
+                          - properties:
+                              type:
+                                enum:
+                                  - literal
+                                type: string
+                              value:
+                                format: textarea
+                                type: string
+                            title: literal
+                          - properties:
+                              key:
+                                description: 가져올 키
+                                type: string
+                              name:
+                                description: 컨피그맵 이름
+                                type: configmapName
+                              type:
+                                enum:
+                                  - configMap
+                                type: string
+                            title: configMap
+                          - properties:
+                              key:
+                                description: 가져올 키
+                                type: string
+                              name:
+                                description: 시크릿 이름
+                                type: secretName
+                              type:
+                                enum:
+                                  - secret
+                                type: string
+                            title: secret
+                        type: object
+                    type: object
+                  type: array
+                imagePullPolicy:
+                  default: Always
+                  description: 이미지를 가져오는 전략
+                  enum:
+                    - Always
+                    - IfNotPresent
+                    - Never
+                  type: string
+                imagePullSecrets:
+                  description: 프라이빗 레지스트리를 가져오기 위한 키
+                  items:
+                    type: secretName
+                    x-kube-type: kubernetes.io/dockerconfigjson
+                  type: array
+                nodeSelector:
+                  description: 노드 셀렉터
+                  items:
+                    properties:
+                      key:
+                        pattern: "([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]"
+                        type: string
+                      value:
+                        default: ""
+                        maxLength: 63
+                        pattern: "(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?"
+                        type: string
+                    type: object
+                  type: array
+                probes:
+                  description: 프로브 종류마다 1개씩만 등록해야 한다.
+                  items:
+                    properties:
+                      action:
+                        anyOf:
+                          - properties:
+                              command:
+                                items:
+                                  type: string
+                                type: array
+                              type:
+                                enum:
+                                  - exec
+                                type: string
+                            title: exec
+                          - properties:
+                              host:
+                                default: ""
+                                type: string
+                              port:
+                                type: string
+                              type:
+                                enum:
+                                  - tcpSocket
+                                type: string
+                            title: tcpSocket
+                          - properties:
+                              host:
+                                default: ""
+                                description: >-
+                                  Host name to connect to, defaults to the pod
+                                  IP. You probably want to set.
+                                type: string
+                              httpHeaders:
+                                description: >-
+                                  Custom headers to set in the request. HTTP
+                                  allows repeated headers.
+                                items:
+                                  properties:
+                                    name:
+                                      type: string
+                                    value:
+                                      type: string
+                                  type: object
+                                type: array
+                              path:
+                                default: ""
+                                description: Path to access on the HTTP server.
+                                type: string
+                              port:
+                                type: string
+                              scheme:
+                                default: HTTP
+                                description: Scheme to use for connecting to the host.
+                                enum:
+                                  - HTTP
+                                  - HTTPS
+                                type: string
+                              type:
+                                enum:
+                                  - httpGet
+                                type: string
+                            title: httpGet
+                      failureThreshold:
+                        default: 3
+                        description: >-
+                          Minimum consecutive failures for the probe to be
+                          considered failed after having succeeded.
+                        minimum: 1
+                        multipleOf: 1
+                        type: number
+                      initialDelaySeconds:
+                        default: 0
+                        description: >-
+                          Number of seconds after the container has started
+                          before liveness probes are initiated.
+                        minimum: 0
+                        multipleOf: 1
+                        type: number
+                      periodSeconds:
+                        default: 10
+                        description: How often (in seconds) to perform the probe.
+                        minimum: 1
+                        multipleOf: 1
+                        type: number
+                      successThreshold:
+                        default: 1
+                        description: >-
+                          Minimum consecutive successes for the probe to be
+                          considered successful after having failed.
+                        minimum: 1
+                        multipleOf: 1
+                        type: number
+                      timeoutSeconds:
+                        default: 1
+                        description: Number of seconds after which the probe times out.
+                        minimum: 1
+                        multipleOf: 1
+                        type: number
+                      type:
+                        enum:
+                          - livenessProbe
+                          - readinessProbe
+                          - startupProbe
+                        type: string
+                    type: object
+                  maximum: 3
+                  type: array
+                replicas:
+                  default: 1
+                  description: 레플리카 파드 수
+                  minimum: 0
+                  multipleOf: 1
+                  type: number
+                resources:
+                  properties:
+                    limits:
+                      properties:
+                        cpu:
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                          type: string
+                        gpu:
+                          default: "0"
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                          type: string
+                        memory:
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                          type: string
+                      type: object
+                    requests:
+                      properties:
+                        cpu:
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                          type: string
+                        memory:
+                          pattern: "^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$"
+                          type: string
+                      type: object
+                  type: object
+                tolerations:
+                  description: tolerations
+                  items:
+                    properties:
+                      effect:
+                        default: NoSchedule
+                        enum:
+                          - NoSchedule
+                          - PreferNoSchedule
+                          - NoExecute
+                        type: string
+                      key:
+                        default: ""
+                        type: string
+                      operator:
+                        default: Equal
+                        enum:
+                          - Equal
+                          - Exists
+                        type: string
+                      value:
+                        default: ""
+                        type: string
+                    type: object
+                  type: array
+                topologyKey:
+                  default: ""
+                  description: topologyKey
+                  pattern: "(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?"
+                  type: string
+                updateStrategy:
+                  default: RollingUpdate
+                  description: 디플로이먼트 배포 전략
+                  enum:
+                    - RollingUpdate
+                    - Recreate
+                  type: string
+                volumes:
+                  description: 볼륨설정
+                  items:
+                    properties:
+                      from:
+                        anyOf:
+                          - properties:
+                              medium:
+                                default: ""
+                                enum:
+                                  - ""
+                                  - Memory
+                                  - HugePages
+                                  - HugePages-
+                                type: string
+                              type:
+                                enum:
+                                  - emptyDir
+                                type: string
+                                x-ui-display: hidden
+                              volumeMounts:
+                                description: 볼륨마운트 설정
+                                items:
+                                  properties:
+                                    mountPath:
+                                      type: string
+                                      x-ui-order: 1
+                                    readOnly:
+                                      default: false
+                                      type: boolean
+                                      x-ui-order: 3
+                                    subPath:
+                                      type: string
+                                      x-ui-order: 2
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-table-width: 4 4 2
+                            title: emptyDir
+                          - properties:
+                              defaultMode:
+                                default: "0644"
+                                pattern: "[0-7]{3}"
+                                type: string
+                                x-ui-order: 2
+                              items:
+                                description: 컨피그맵에서 파일로 생성할 키 배열
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    path:
+                                      type: string
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-table-width: 5 5
+                              name:
+                                description: 컨피그맵 이름
+                                type: configmapName
+                                x-ui-order: 1
+                              type:
+                                enum:
+                                  - configMap
+                                type: string
+                                x-ui-display: hidden
+                              volumeMounts:
+                                description: 볼륨마운트 설정
+                                items:
+                                  properties:
+                                    mountPath:
+                                      type: string
+                                      x-ui-order: 1
+                                    readOnly:
+                                      default: false
+                                      type: boolean
+                                      x-ui-order: 3
+                                    subPath:
+                                      type: string
+                                      x-ui-order: 2
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-order: 3
+                                x-ui-table-width: 4 4 2
+                            title: configMap
+                          - properties:
+                              defaultMode:
+                                default: "0644"
+                                pattern: "[0-7]{3}"
+                                type: string
+                                x-ui-order: 2
+                              items:
+                                description: 시크릿에서 파일로 생성할 키 배열
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    path:
+                                      type: string
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-order: 3
+                                x-ui-table-width: 5 5
+                              name:
+                                description: 시크릿 이름
+                                type: secretName
+                                x-ui-order: 1
+                              type:
+                                enum:
+                                  - secret
+                                type: string
+                                x-ui-display: hidden
+                              volumeMounts:
+                                description: 볼륨마운트 설정
+                                items:
+                                  properties:
+                                    mountPath:
+                                      type: string
+                                      x-ui-order: 1
+                                    readOnly:
+                                      default: false
+                                      type: boolean
+                                      x-ui-order: 3
+                                    subPath:
+                                      type: string
+                                      x-ui-order: 2
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-order: 4
+                                x-ui-table-width: 4 4 2
+                            title: secret
+                          - properties:
+                              name:
+                                description: PVC 이름
+                                type: kubernetes
+                                x-kube-fields: metadata.name
+                                x-kube-labelSelector: app.kubernetes.io/managed-by!=Pipeline
+                                x-kube-resource: persistentvolumeclaims
+                                x-kube-version: v1
+                                x-ui-order: 1
+                              type:
+                                enum:
+                                  - persistentVolumeClaim
+                                type: string
+                                x-ui-display: hidden
+                              volumeMounts:
+                                description: 볼륨마운트 설정
+                                items:
+                                  properties:
+                                    mountPath:
+                                      type: string
+                                      x-ui-order: 1
+                                    readOnly:
+                                      default: false
+                                      type: boolean
+                                      x-ui-order: 3
+                                    subPath:
+                                      type: string
+                                      x-ui-order: 2
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-order: 2
+                                x-ui-table-width: 4 4 2
+                            title: persistentVolumeClaim
+                          - properties:
+                              path:
+                                type: string
+                                x-ui-order: 1
+                              pathType:
+                                default: ""
+                                enum:
+                                  - ""
+                                  - DirectoryOrCreate
+                                  - Directory
+                                  - FileOrCreate
+                                  - File
+                                  - Socket
+                                  - CharDevice
+                                  - BlockDevice
+                                type: string
+                                x-ui-order: 2
+                              type:
+                                enum:
+                                  - hostPath
+                                type: string
+                                x-ui-display: hidden
+                              volumeMounts:
+                                description: 볼륨마운트 설정
+                                items:
+                                  properties:
+                                    mountPath:
+                                      type: string
+                                      x-ui-order: 1
+                                    readOnly:
+                                      default: false
+                                      type: boolean
+                                      x-ui-order: 3
+                                    subPath:
+                                      type: string
+                                      x-ui-order: 2
+                                  type: object
+                                type: array
+                                x-ui-format: table
+                                x-ui-order: 3
+                                x-ui-table-width: 4 4 2
+                            title: hostPath
+                        x-ui-order: 2
+                      name:
+                        description: 볼륨이름
+                        pattern: "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+                        type: string
+                        x-ui-order: 1
+                    type: object
+                  type: array
+              type: object
+            ports:
+              description: 포트 설정
+              items:
+                properties:
+                  containerPort:
+                    maximum: 65535
+                    minimum: 1
+                    multipleOf: 1
+                    type: number
+                  name:
+                    default: ""
+                    type: string
+                  nodePort:
+                    default: 0
+                    maximum: 65535
+                    minimum: 0
+                    multipleOf: 1
+                    type: number
+                  protocol:
+                    default: TCP
+                    enum:
+                      - TCP
+                      - UDP
+                      - SCTP
+                    type: string
+                  servicePort:
+                    maximum: 65535
+                    minimum: 1
+                    multipleOf: 1
+                    type: number
+                type: object
+              type: array
+              x-ui-format: table
+              x-ui-table-width: 3 2 2 2 1
+            serviceType:
+              default: ClusterIP
+              enum:
+                - ClusterIP
+                - NodePort
+                - LoadBalancer
+                - ExternalName
+              type: string
+          type: object
+

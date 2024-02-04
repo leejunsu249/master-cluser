@@ -1,0 +1,98 @@
+###############################################################################
+# cicd-manager
+###############################################################################
+- name: cicd-manager addon directory
+  file: path={{ kube_addon_dir }}/acc-system/cicd-manager/cert state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+- name: Copy server.conf
+  template:
+    src: "cicd-manager/cert/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-manager/cert/{{ item }}"
+  with_items:
+    - tls.conf
+
+- name: Create tls.key
+  shell: >
+    openssl genrsa -out {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.key 2048
+
+- name: Create tls.csr
+  shell: >
+    openssl req -new -key {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.key -subj "/CN=mantech" -out {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.csr -config {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.conf
+
+- name: Create tls.crt
+  shell: >
+    openssl x509 -req -in {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.csr -CA {{ kube_addon_dir }}/clusterinfo/cert/ca.crt -CAkey {{ kube_addon_dir }}/clusterinfo/cert/ca.key -CAcreateserial -out {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.crt -days {{ certificates_duration }} -extensions v3_req -extfile {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.conf
+
+###############################################################################
+- name: Get ca.crt
+  shell: >
+    cat {{ kube_addon_dir }}/clusterinfo/cert/ca.crt
+  register: registry_ca_crt
+
+- name: Base64 registry_ca_crt
+  shell: >
+    echo {{ registry_ca_crt.stdout | b64encode }}
+  register: base64_registry_ca_crt
+
+- name: set var fact
+  set_fact:
+    base_registry_ca_crt: "{{ base64_registry_ca_crt }}"
+
+- name: Get tls.crt
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.crt
+  register: registry_tls_crt
+
+- name: Base64 registry_tls_crt
+  shell: >
+    echo {{ registry_tls_crt.stdout | b64encode }}
+  register: base64_registry_tls_crt
+
+- name: set var fact
+  set_fact:
+    base_registry_tls_crt: "{{ base64_registry_tls_crt }}"
+
+- name: Get tls.key
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/cicd-manager/cert/tls.key
+  register: registry_tls_key
+
+- name: Base64 registry_tls_key
+  shell: >
+    echo {{ registry_tls_key.stdout | b64encode }}
+  register: base64_registry_tls_key
+
+- name: set var fact
+  set_fact:
+    base_registry_tls_key: "{{ base64_registry_tls_key }}"
+
+- name: Get registry_passwd
+  shell: >
+    cat {{ kube_addon_dir }}/registry/passwd
+  register: registry_passwd
+
+- name: Copy files
+  template:
+    src: "cicd-manager/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-manager/{{ item }}"
+  with_items:
+    - cicd-impersonator-clusterrolebinding.yaml
+    - cicd-impersonator-clusterrole.yaml
+    - cicd-manager-clusterrolebinding.yaml
+    - cicd-manager-clusterrole.yaml
+    - cicd-manager-cm.yaml
+    - cicd-manager-deploy.yaml
+    - cicd-manager-mutatingwebhookconfiguration.yaml
+    - cicd-manager-rolebinding.yaml
+    - cicd-manager-role.yaml
+    - cicd-manager-sa.yaml
+    - cicd-manager-secret.yaml
+    - cicd-manager-svc.yaml
+    - cicd-workspace-clusterrolebinding.yaml
+    - cicd-workspace-clusterrole.yaml
+
+- name: Deploy cicd-manager setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/cicd-manager

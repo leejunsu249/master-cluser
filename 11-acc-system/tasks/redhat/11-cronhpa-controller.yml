@@ -1,0 +1,21 @@
+---
+###############################################################################
+# cronhpa-controller
+###############################################################################
+- name: cronhpa-controller addon directory
+  file: path={{ kube_addon_dir }}/acc-system/cronhpa-controller state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy files
+  template:
+    src: "cronhpa-controller/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cronhpa-controller/{{ item }}"
+  with_items:
+    - cronhpa-clusterrolebinding.yaml
+    - cronhpa-clusterrole.yaml
+    - cronhpa-deploy.yaml
+    - cronhpa-sa.yaml
+
+- name: Deploy cronhpa-controller setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/cronhpa-controller

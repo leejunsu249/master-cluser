@@ -1,0 +1,144 @@
+---
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+#####################################################
+# Thanos
+#####################################################
+- name: Create thanos directory (Thanos Manager)
+  file: path={{ kube_addon_dir }}/acc-system/thanos state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Create minio directory
+  file: path={{ kube_addon_dir }}/acc-system/thanos/minio state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (Thanos Manager)
+  template:
+    src: "thanos/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/thanos/{{ item }}"
+  with_items:
+    - 3-thanos-storegateway-svc.yaml
+    - 4-thanos-storegateway-sts.yaml
+    - 5-thanos-compact-sts.yaml
+
+- name: Copy Template (Thanos Manager)
+  template:
+    src: "thanos/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/thanos/minio/{{ item }}"
+  with_items:
+    - 7-minio-sts.yaml
+    - 8-minio-svc.yaml
+
+- name: Copy Template
+  template:
+    src: "thanos/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/thanos/{{ item }}"
+  with_items:
+    - thanos-sidecar.yaml
+  when:
+    - external_prometheus == "yes"
+
+######################################################
+# MinIO
+######################################################
+- name: Create secret directory
+  file: path={{ kube_addon_dir }}/acc-system/thanos/secret state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "thanos/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/thanos/secret/{{ item }}"
+  with_items:
+    - 6-thanos-object-config.yaml
+
+#######################################################
+# Deploy
+#####################################################
+- name: Deploy Thanos
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/thanos/minio
+
+#- name: Get ServiceIP
+#  shell: >
+#    echo {{ service_cidr }} | cut -d "." -f1,2
+#  register: service_ip
+
+#- name: Get miniO ServiceIP
+#  shell: >
+#    kubectl get svc minio -n acc-system | tail -n1 | awk '{print $3}'
+#  register: minio_ip
+
+#- name: print minio_ip
+#  debug: msg="{{ minio_ip.stdout }}"
+#  tags:
+#    - output
+
+#- name: Wait_for minio
+#  command: curl -w "%{http_code} Code OK" "http://{{ minio_ip.stdout }}:9000"
+#  register: result
+#  until: result.stdout.find("403 Code OK") != -1
+#  retries: 20
+#  delay: 30
+#  changed_when: false
+
+- name: Create Object Secret
+  shell: >
+    kubectl -n acc-system create secret generic thanos-objstore-config --from-file=thanos-objectc-cofnig.yaml={{ kube_addon_dir }}/acc-system/thanos/secret/6-thanos-object-config.yaml
+  ignore_errors: yes
+  when:
+    - prometheus_install == "yes"
+
+- name: Create Object Secret(external)
+  shell: >
+    kubectl -n {{ prometheus_ns }} create secret generic thanos-objstore-config --from-file=thanos-objectc-cofnig.yaml={{ kube_addon_dir }}/acc-system/thanos/secret/6-thanos-object-config.yaml
+  when:
+    - external_prometheus == "yes"
+    - prometheus_install == "yes"
+  ignore_errors: yes
+
+
+##################################################################
+- name: Create prometheus
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/prometheus/sts
+  when:
+    - external_prometheus == "no"
+    - prometheus_install == "yes"
+
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+#- name: Get prometheus ServiceIP
+#  shell: >
+#    kubectl get svc prometheus-operator-prometheus -n acc-system | tail -n1 | awk '{print $3}'
+#  register: prometheus_ip
+
+#- name: print prometheus_ip
+#  debug: msg="{{ prometheus_ip.stdout }}"
+#  tags:
+#    - output
+
+#- name: Wait_for prometheus
+#  command: curl -w "%{http_code} Code OK" "http://{{ prometheus_ip.stdout }}:9090/graph"
+#  register: result
+#  until: result.stdout.find("200 Code OK") != -1
+#  retries: 20
+#  delay: 30
+#  changed_when: false
+
+#- name: Delete configmap label
+#  shell: >
+#    kubectl patch configmap -n acc-system prometheus-prometheus-operator-prometheus-rulefiles-0 --type='json' -p='[{"op": "remove", "path": "/metadata/labels"}]'
+
+- name: Deploy Thanos
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/thanos
+  when:
+    - prometheus_install == "yes"
+

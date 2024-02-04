@@ -1,0 +1,92 @@
+###############################################################################
+# cicd-trigger-manager
+###############################################################################
+- name: cicd-trigger-manager addon directory
+  file: path={{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+- name: Copy tls.conf
+  template:
+    src: "cicd-trigger-manager/cert/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/{{ item }}"
+  with_items:
+    - tls.conf
+
+- name: Create tls.key
+  shell: >
+    openssl genrsa -out {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.key 2048
+
+- name: Create tls.csr
+  shell: >
+    openssl req -new -key {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.key -subj "/CN=mantech" -out {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.csr -config {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.conf
+
+- name: Create tls.crt
+  shell: >
+    openssl x509 -req -in {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.csr -CA {{ kube_addon_dir }}/clusterinfo/cert/ca.crt -CAkey {{ kube_addon_dir }}/clusterinfo/cert/ca.key -CAcreateserial -out {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.crt -days {{ certificates_duration }} -extensions v3_req -extfile {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.conf
+
+- name: Get ca.crt
+  shell: >
+    cat {{ kube_addon_dir }}/clusterinfo/cert/ca.crt
+  register: ca_crt
+
+- name: Base64 scouter_ca_crt
+  shell: >
+    echo {{ ca_crt.stdout | b64encode }}
+  register: base64_ca_crt
+
+- name: set var fact
+  set_fact:
+    base_ca_crt: "{{ base64_ca_crt }}"
+
+- name: Get tls.crt
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.crt
+  register: trigger_tls_crt
+
+- name: Base64 scouter_tls_crt
+  shell: >
+    echo {{ trigger_tls_crt.stdout | b64encode }}
+  register: base64_trigger_tls_crt
+
+- name: set var fact
+  set_fact:
+    base_trigger_tls_crt: "{{ base64_trigger_tls_crt }}"
+
+- name: Get tls.key
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/cicd-trigger-manager/cert/tls.key
+  register: trigger_tls_key
+
+- name: Base64 trigger_tls_key
+  shell: >
+    echo {{ trigger_tls_key.stdout | b64encode }}
+  register: base64_trigger_tls_key
+
+- name: set var fact
+  set_fact:
+    base_trigger_tls_key: "{{ base64_trigger_tls_key }}"
+
+- name: Copy files
+  template:
+    src: "cicd-trigger-manager/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-trigger-manager/{{ item }}"
+  with_items:
+    - cicd-trigger-leader-election-rolebinding.yaml
+    - cicd-trigger-leader-election-role.yaml
+    - cicd-trigger-manager-cm.yaml
+    - cicd-trigger-manager-deploy.yaml
+    - cicd-trigger-manager-rolebinding.yaml
+    - cicd-trigger-manager-role.yaml
+    - cicd-trigger-manager-sa.yaml
+    - cicd-trigger-manager-secret.yaml
+    - cicd-trigger-manager-svc.yaml
+
+- name: Deploy cicd-trigger-manager setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/cicd-trigger-manager
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

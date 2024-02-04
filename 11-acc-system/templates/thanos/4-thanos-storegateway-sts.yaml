@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+   labels:
+     app.kubernetes.io/component: object-store-gateway
+     app.kubernetes.io/instance: thanos-store
+     app.kubernetes.io/name: thanos-store
+     app.kubernetes.io/version: v0.30.2
+   name: thanos-store
+   namespace: acc-system
+spec:
+{% if thanos_ha == "yes" %}
+  replicas: 2
+{% else %}
+  replicas: 1
+{% endif %}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: object-store-gateway
+      app.kubernetes.io/instance: thanos-store
+      app.kubernetes.io/name: thanos-store
+  serviceName: thanos-store
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: object-store-gateway
+        app.kubernetes.io/instance: thanos-store
+        app.kubernetes.io/name: thanos-store
+        app.kubernetes.io/version: v0.30.2
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+{% if thanos_ha == "yes" %}
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: thanos-store
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+{% endif %}
+      containers:
+      - args:
+        - store
+        - --log.level=debug
+        - --log.format=logfmt
+        - --data-dir=/data
+        - --grpc-address=0.0.0.0:10901
+        - --http-address=0.0.0.0:10902
+        - --objstore.config=$(OBJSTORE_CONFIG)
+        - --ignore-deletion-marks-delay=24h
+        env:
+        - name: OBJSTORE_CONFIG
+          valueFrom:
+            secretKeyRef:
+              key: thanos-objectc-cofnig.yaml
+              name: thanos-objstore-config
+        image: {{ base_registry_address }}:{{ base_registry_port }}/thanos:v0.30.2
+        livenessProbe:
+          failureThreshold: 8
+          httpGet:
+            path: /-/healthy
+            port: 10902
+            scheme: HTTP
+          periodSeconds: 30
+        name: thanos-store
+        ports:
+        - containerPort: 10901
+          name: grpc
+        - containerPort: 10902
+          name: http
+        readinessProbe:
+          failureThreshold: 20
+          httpGet:
+            path: /-/ready
+            port: 10902
+            scheme: HTTP
+          periodSeconds: 5
+        resources: {}
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/secret
+          name: thanos-objstore-config
+          readOnly: false
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - name: thanos-objstore-config
+          secret:
+            secretName: thanos-objstore-config

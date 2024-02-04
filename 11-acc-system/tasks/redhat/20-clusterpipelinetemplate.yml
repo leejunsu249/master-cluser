@@ -1,0 +1,28 @@
+###############################################################################
+# clusterpipelinetemplate
+###############################################################################
+- name: clusterpipelinetemplate addon directory
+  file: path={{ kube_addon_dir }}/acc-system/clusterpipelinetemplate state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  copy:
+    src: "clusterpipelinetemplate/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/clusterpipelinetemplate/{{ item }}"
+  with_items:
+    - acc-vcs-image.yaml
+    - acc-showcase-env.yaml
+    - acc-vcs-jbuild-springboot.yaml
+    - acc-vcs-jbuild-tomcat.yaml
+    - acc-vcs-jbuild-wildfly.yaml
+
+- name: Deploy clusterpipelinetemplate setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/clusterpipelinetemplate
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

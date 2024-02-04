@@ -1,0 +1,104 @@
+---
+###############################################################################
+# istio
+###############################################################################
+- name: istio addon directory
+  file: path={{ kube_addon_dir }}/istio-system/istio state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: istio crd addon directory
+  file: path={{ kube_addon_dir }}/istio-system/istio/crd state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: istio etc addon directory
+  file: path={{ kube_addon_dir }}/istio-system/istio/etc state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy files
+  copy:
+    src: "istio-kubeflow/{{ item }}"
+    dest: "{{ kube_addon_dir }}/istio-system/istio/{{ item }}"
+  with_items:
+    - istio-cm.yaml
+
+- name: Replace istio-cm.yaml
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp1 }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { path: '{{ kube_addon_dir }}/istio-system/istio/istio-cm.yaml', regexp1: 'base_registry_address', replace: '{{ base_registry_address }}' }
+    - { path: '{{ kube_addon_dir }}/istio-system/istio/istio-cm.yaml', regexp1: 'base_registry_port', replace: '{{ base_registry_port }}' }
+
+- name: Copy Template
+  template:
+    src: "istio-kubeflow/{{ item }}"
+    dest: "{{ kube_addon_dir }}/istio-system/istio/{{ item }}"
+  with_items:
+    - 0-istio-ns.yaml
+    - istio-deployment.yaml
+    - istio-mutatingwebhookconfiguration.yaml
+    - istio-pvc.yaml
+    - istio-rbac.yaml
+    - istio-sa.yaml
+    - istio-svc.yaml
+    - jaeger.yaml
+    - prometheus.yaml
+
+- name: Copy Template
+  template:
+    src: "istio-kubeflow/etc/{{ item }}"
+    dest: "{{ kube_addon_dir }}/istio-system/istio/etc/{{ item }}"
+  with_items:
+    - istio-envoyfilter.yaml
+    - kiali.yaml
+
+- name: Copy template
+  template:
+    src: "istio-kubeflow/crd/{{ item }}"
+    dest: "{{ kube_addon_dir }}/istio-system/istio/crd/{{ item }}"
+  with_items:
+    - istio-crd.yaml
+
+- name: Create istio crd
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/istio-system/istio/crd
+  ignore_errors: yes
+
+- name: Deploy istio setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/istio-system/istio
+  ignore_errors: yes
+
+- name : wait_for(10s)
+  wait_for: timeout=10
+  delegate_to: localhost
+  become: no
+
+- name: Get Istiod Pod
+  shell: >
+    kubectl get po -n istio-system | grep istiod | grep -v ingress | tail -n1 | awk '{print $1}'
+  register: istiod_pod
+  until: istiod_pod.stdout != ""
+  retries: 30
+  delay: 5
+
+- name: Wait Istiod Pod
+  shell: >
+    kubectl wait --for=condition=ready pod/{{ istiod_pod.stdout }} -n istio-system
+  register: result
+  until: result.rc == 0
+  retries: 2000
+  delay: 5
+  ignore_errors: yes
+
+- name: Deploy istio etc setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/istio-system/istio/etc
+  ignore_errors: yes
+
+- name: Restart Coredns
+  shell: >
+    kubectl get pods -n kube-system -oname | grep coredns | xargs kubectl delete -n kube-system
+  when:
+    - member_option != "openshift"

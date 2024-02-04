@@ -1,0 +1,532 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterCatalogSnippet
+metadata:
+  annotations:
+    accordions.co.kr/description: https://kubernetes.io/docs/concepts/workloads/controllers/deployment
+    accordions.co.kr/summary: Kubernetes Deployment
+  name: deploy
+spec:
+  resource: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: {{{.CATALOG.NAME}}}
+    spec:
+      selector:
+        matchLabels:
+          app: {{{.CATALOG.NAME}}}
+      replicas: {{.values.deploy.replicas}}
+      strategy:
+        type: {{.values.deploy.updateStrategy}}
+      template:
+        metadata:
+          labels:
+            app: {{{.CATALOG.NAME}}}
+        spec:
+          nodeSelector:
+          {{- range $i, $s := .values.deploy.nodeSelector}}
+            {{$s.key}}: {{$s.value}}
+          {{- end}}
+          imagePullSecrets:
+          {{- range $i, $secret := .values.deploy.imagePullSecrets}}
+            - name: {{$secret}}
+          {{- end}}
+          {{- with $resources := .values.deploy.resources}}
+          resources:
+            {{- with $requests := $resources.requests}}
+            requests:
+              cpu: '{{$requests.cpu}}'
+              memory: '{{$requests.memory}}'
+            {{- end}}
+            {{- with $limits := $resources.limits}}
+            limits:
+              cpu: '{{$limits.cpu}}'
+              memory: '{{$limits.memory}}'
+              {{- if ne $limits.gpu "0"}}
+              nvidia.com/gpu: '{{$limits.gpu}}'
+              {{- end}}
+            {{- end}}
+          {{- end}}
+          containers:
+          - name: {{{.CATALOG.NAME}}}
+            image: {{.values.deploy.image}}
+            imagePullPolicy: {{.values.deploy.imagePullPolicy}}
+            ports:
+            {{- range $i, $p := .values.deploy.ports}}
+              - containerPort: {{$p.containerPort}}
+                protocol: {{$p.protocol}}
+                name: {{$p.name}}
+                hostPort: {{$p.hostPort}}
+                hostIP: {{$p.hostIP}}
+            {{- end}}
+            env:
+            {{- range $i, $e := .values.deploy.env}}
+              {{- if eq $e.valueFrom.type "literal"}}
+              - name: {{$e.name}}
+                value: {{$e.valueFrom.value}}
+              {{- else if eq $e.valueFrom.type "configMap"}}
+              - name: {{$e.name}}
+                valueFrom:
+                  configMapKeyRef:
+                    name: {{$e.valueFrom.name}}
+                    key: {{$e.valueFrom.key}}
+              {{- else if eq $e.valueFrom.type "secret"}}
+              - name: {{$e.name}}
+                valueFrom:
+                  secretKeyRef:
+                    name: {{$e.valueFrom.name}}
+                    key: {{$e.valueFrom.key}}
+              {{- end}}
+            {{- end}}
+          {{- if .values.deploy.probes}}
+          {{- $list := list "startupProbe" "readinessProbe" "livenessProbe"}}
+          {{- range $i, $p := .values.deploy.probes}}
+            {{- if has $p.type $list}}
+            {{- $list = without $list $p.type}}
+            {{$p.type}}:
+              initialDelaySeconds: {{$p.initialDelaySeconds}}
+              timeoutSeconds: {{$p.timeoutSeconds}}
+              periodSeconds: {{$p.periodSeconds}}
+              successThreshold: {{$p.successThreshold}}
+              failureThreshold: {{$p.failureThreshold}}
+            {{- if eq $p.action.type "exec"}}
+              exec:
+                command:
+                {{- range $j, $cmd := $p.action.command}}
+                - {{$cmd}}
+                {{- end}}
+            {{- else if eq $p.action.type "tcpSocket"}}
+              tcpSocket:
+                port: {{$p.action.port}}
+                host: {{$p.action.host}}
+            {{- else if eq $p.action.type "httpGet"}}
+              httpGet:
+                path: {{$p.action.path}}
+                port: {{$p.action.port}}
+                host: {{$p.action.host}}
+                scheme: {{$p.action.scheme}}
+                httpHeaders:
+                {{- range $j, $h := $p.action.httpHeaders}}
+                - name: {{$h.name}}
+                  value: {{$h.value}}
+                {{- end}}
+            {{- end}}
+            {{- end}}
+          {{- end}}
+          {{- end}}
+            volumeMounts:
+            {{- range $i, $v := .values.deploy.volumes}}
+              - name: {{$v.name}}
+                mountPath: {{$v.mountPath}}
+                readOnly: {{$v.readOnly}}
+                subPath: {{$v.subPath}}
+            {{- end}}
+          volumes:
+          {{- range $i, $v := .values.deploy.volumes}}
+            {{- if eq $v.from.type "emptyDir"}}
+            - name: {{$v.name}}
+              emptyDir:
+                medium: {{$v.from.medium}}
+            {{- else if eq $v.from.type "configMap"}}
+            - name: {{$v.name}}
+              configMap:
+                name: {{$v.from.name}}
+                defaultMode: {{toDecimal $v.from.defaultMode}}
+                items:
+                {{- range $j, $item := $v.from.items}}
+                  - key: {{$item.key}}
+                    path: {{$item.path}}
+                {{- end}}
+            {{- else if eq $v.from.type "secret"}}
+            - name: {{$v.name}}
+              secret:
+                secretName: {{$v.from.name}}
+                defaultMode: {{toDecimal $v.from.defaultMode}}
+                items:
+                {{- range $j, $item := $v.from.items}}
+                  - key: {{$item.key}}
+                    path: {{$item.path}}
+                {{- end}}
+            {{- else if eq $v.from.type "persistentVolumeClaim"}}
+            - name: {{$v.name}}
+              persistentVolumeClaim:
+                claimName: {{$v.from.name}}
+            {{- else if eq $v.from.type "hostPath"}}
+            - name: {{$v.name}}
+              hostPath:
+                path: {{$v.from.path}}
+                type: {{$v.from.pathType}}
+            {{- end}}
+          {{- end}}
+  valueschema:
+    properties:
+      deploy:
+        properties:
+          env:
+            description: 컨테이너 환경변수
+            items:
+              properties:
+                name:
+                  description: 환경변수 이름
+                  pattern: ^[-._a-zA-Z][-._a-zA-Z0-9]*$
+                  type: string
+                valueFrom:
+                  anyOf:
+                  - properties:
+                      type:
+                        enum:
+                        - literal
+                        type: string
+                      value:
+                        type: string
+                    title: literal
+                  - properties:
+                      key:
+                        description: 가져올 키
+                        type: string
+                      name:
+                        description: 컨피그맵 이름
+                        type: configmapName
+                      type:
+                        enum:
+                        - configMap
+                        type: string
+                    title: configMap
+                  - properties:
+                      key:
+                        description: 가져올 키
+                        type: string
+                      name:
+                        description: 시크릿 이름
+                        type: secretName
+                      type:
+                        enum:
+                        - secret
+                        type: string
+                    title: secret
+                  type: object
+              type: object
+            type: array
+          image:
+            description: 이미지
+            minLength: 1
+            type: string
+          imagePullPolicy:
+            default: Always
+            description: 이미지를 가져오는 전략
+            enum:
+            - Always
+            - IfNotPresent
+            - Never
+            type: string
+          imagePullSecrets:
+            description: 프라이빗 레지스트리를 가져오기 위한 키
+            items:
+              type: secretName
+              x-kube-type: kubernetes.io/dockerconfigjson
+            type: array
+          nodeSelector:
+            description: 노드 셀렉터
+            items:
+              properties:
+                key:
+                  pattern: ([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]
+                  type: string
+                value:
+                  default: ""
+                  maxLength: 63
+                  pattern: (([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+                  type: string
+              type: object
+            type: array
+          ports:
+            description: 포트 설정
+            items:
+              properties:
+                containerPort:
+                  maximum: 65535
+                  minimum: 1
+                  multipleOf: 1
+                  type: number
+                hostIP:
+                  default: ""
+                  type: string
+                hostPort:
+                  default: 0
+                  maximum: 65535
+                  minimum: 0
+                  multipleOf: 1
+                  type: number
+                name:
+                  default: ""
+                  type: string
+                protocol:
+                  default: TCP
+                  enum:
+                  - TCP
+                  - UDP
+                  - SCTP
+                  type: string
+              type: object
+            type: array
+          probes:
+            description: 프로브 종류마다 1개씩만 등록해야 한다.
+            items:
+              properties:
+                action:
+                  anyOf:
+                  - properties:
+                      command:
+                        items:
+                          type: string
+                        type: array
+                      type:
+                        enum:
+                        - exec
+                        type: string
+                    title: exec
+                  - properties:
+                      host:
+                        default: ""
+                        type: string
+                      port:
+                        type: string
+                      type:
+                        enum:
+                        - tcpSocket
+                        type: string
+                    title: tcpSocket
+                  - properties:
+                      host:
+                        default: ""
+                        description: Host name to connect to, defaults to the pod
+                          IP. You probably want to set.
+                        type: string
+                      httpHeaders:
+                        description: Custom headers to set in the request. HTTP allows
+                          repeated headers.
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      path:
+                        default: ""
+                        description: Path to access on the HTTP server.
+                        type: string
+                      port:
+                        type: string
+                      scheme:
+                        default: HTTP
+                        description: Scheme to use for connecting to the host.
+                        enum:
+                        - HTTP
+                        - HTTPS
+                        type: string
+                      type:
+                        enum:
+                        - httpGet
+                        type: string
+                    title: httpGet
+                failureThreshold:
+                  default: 3
+                  description: Minimum consecutive failures for the probe to be considered
+                    failed after having succeeded.
+                  minimum: 1
+                  multipleOf: 1
+                  type: number
+                initialDelaySeconds:
+                  default: 0
+                  description: Number of seconds after the container has started before
+                    liveness probes are initiated.
+                  minimum: 0
+                  multipleOf: 1
+                  type: number
+                periodSeconds:
+                  default: 10
+                  description: How often (in seconds) to perform the probe.
+                  minimum: 1
+                  multipleOf: 1
+                  type: number
+                successThreshold:
+                  default: 1
+                  description: Minimum consecutive successes for the probe to be considered
+                    successful after having failed.
+                  minimum: 1
+                  multipleOf: 1
+                  type: number
+                timeoutSeconds:
+                  default: 1
+                  description: Number of seconds after which the probe times out.
+                  minimum: 1
+                  multipleOf: 1
+                  type: number
+                type:
+                  enum:
+                  - livenessProbe
+                  - readinessProbe
+                  - startupProbe
+                  type: string
+              type: object
+            maximum: 3
+            type: array
+          replicas:
+            default: 1
+            description: 레플리카 파드 수
+            minimum: 0
+            multipleOf: 1
+            type: number
+          resources:
+            properties:
+              limits:
+                properties:
+                  cpu:
+                    pattern: ^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
+                    type: string
+                  gpu:
+                    default: "0"
+                    pattern: ^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
+                    type: string
+                  memory:
+                    pattern: ^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
+                    type: string
+                type: object
+              requests:
+                properties:
+                  cpu:
+                    pattern: ^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
+                    type: string
+                  memory:
+                    pattern: ^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$
+                    type: string
+                type: object
+            type: object
+          updateStrategy:
+            default: RollingUpdate
+            description: 디플로이먼트 배포 전략
+            enum:
+            - RollingUpdate
+            - Recreate
+            type: string
+          volumes:
+            description: 볼륨
+            items:
+              properties:
+                from:
+                  anyOf:
+                  - properties:
+                      medium:
+                        default: ""
+                        enum:
+                        - ""
+                        - Memory
+                        - HugePages
+                        - HugePages-
+                        type: string
+                      type:
+                        enum:
+                        - emptyDir
+                        type: string
+                    title: emptyDir
+                  - properties:
+                      defaultMode:
+                        default: "0644"
+                        pattern: '[0-7]{3}'
+                        type: string
+                      items:
+                        description: 컨피그맵에서 파일로 생성할 키 배열
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            path:
+                              type: string
+                          type: object
+                        type: array
+                      name:
+                        description: 컨피그맵 이름
+                        type: configmapName
+                      type:
+                        enum:
+                        - configMap
+                        type: string
+                    title: configMap
+                  - properties:
+                      defaultMode:
+                        default: "0644"
+                        pattern: '[0-7]{3}'
+                        type: string
+                      items:
+                        description: 시크릿에서 파일로 생성할 키 배열
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            path:
+                              type: string
+                          type: object
+                        type: array
+                      name:
+                        description: 시크릿 이름
+                        type: secretName
+                      type:
+                        enum:
+                        - secret
+                        type: string
+                    title: secret
+                  - properties:
+                      name:
+                        description: PVC 이름
+                        type: kubernetes
+                        x-kube-fields: metadata.name
+                        x-kube-group: ""
+                        x-kube-labelSelector: app.kubernetes.io/managed-by!=Pipeline
+                        x-kube-resource: persistentvolumeclaims
+                        x-kube-version: v1
+                      type:
+                        enum:
+                        - persistentVolumeClaim
+                        type: string
+                    title: persistentVolumeClaim
+                  - properties:
+                      path:
+                        type: string
+                      pathType:
+                        default: ""
+                        enum:
+                        - ""
+                        - DirectoryOrCreate
+                        - Directory
+                        - FileOrCreate
+                        - File
+                        - Socket
+                        - CharDevice
+                        - BlockDevice
+                        type: string
+                      type:
+                        enum:
+                        - hostPath
+                        type: string
+                    title: hostPath
+                mountPath:
+                  description: 볼륨마운트 경로
+                  type: string
+                name:
+                  description: 볼륨이름
+                  pattern: '[a-z0-9]([-a-z0-9]*[a-z0-9])?'
+                  type: string
+                readOnly:
+                  default: false
+                  type: boolean
+                subPath:
+                  default: ""
+                  type: string
+              type: object
+            type: array
+        type: object
+    type: object
+

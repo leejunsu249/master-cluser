@@ -1,0 +1,314 @@
+---
+###############################################################################
+# harbor
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: Get random_passwd
+  shell: >
+    cat {{ kube_addon_dir }}/registry/passwd
+  register: random_passwd
+
+###############################################################################
+
+- name: harbor addon directory
+  file: path={{ kube_addon_dir }}/acc-system/harbor/config state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: harbor addon directory
+  file: path={{ kube_addon_dir }}/acc-system/harbor/postgres state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Restart kube-system(calico, coredns)
+  shell: >
+    kubectl get pods -n kube-system -oname | grep {{ item }} | xargs kubectl delete -n kube-system
+  with_items:
+    - coredns
+    - calico
+  ignore_errors: yes
+
+- name : wait_for(10s)
+  wait_for: timeout=10
+  delegate_to: localhost
+  become: no
+
+- name: Copy Template
+  template:
+    src: "harbor-ha/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/harbor/postgres/{{ item }}"
+  with_items:
+    - harbor-postgres.yaml
+
+- name: Copy Template
+  template:
+    src: "harbor-ha/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/harbor/{{ item }}"
+  with_items:
+    - harbor-cm.yaml
+    - harbor-deploy.yaml
+    - harbor-pvc.yaml
+    - harbor-svc.yaml
+
+- name: apply postgres
+  shell: > 
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/harbor/postgres/{{ item }}
+  with_items:
+    - harbor-postgres.yaml
+
+- name: Get harbor-postgres check
+  shell: >
+    kubectl exec -it -n acc-system tsdb-timescaledb-0  -- psql "postgres://postgres:t7FgmjJV96@postgres-ha-postgresql-ha-pgpool:5432" -c 'SELECT 1;'
+  register: postgres_check
+  until: postgres_check.rc == 0
+  retries: 30
+  delay: 5
+
+- name: Create database
+  shell: >
+    kubectl exec -it -n acc-system tsdb-timescaledb-0 -- psql "postgres://postgres:t7FgmjJV96@postgres-ha-postgresql-ha-pgpool:5432" -c "CREATE DATABASE {{ item }};"
+  with_items:
+    - registry
+    - notarysigner
+    - notaryserver
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "harbor-ha/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/harbor/config/{{ item }}"
+  with_items:
+    - server.json
+    - signer.json
+    - tls.cnf
+    - ca.cnf
+
+- name: Create ca.key
+  shell: >
+    openssl genrsa -out {{ kube_addon_dir }}/acc-system/harbor/config/ca.key 2048
+
+- name: Create ca.crt
+  shell: >
+    openssl req -x509 -new -nodes -key {{ kube_addon_dir }}/acc-system/harbor/config/ca.key -days {{ certificates_duration }} -out {{ kube_addon_dir }}/acc-system/harbor/config/ca.crt -extensions v3_ext -config {{ kube_addon_dir }}/acc-system/harbor/config/ca.cnf
+
+- name: Create tls.key
+  shell: >
+    openssl genrsa -out {{ kube_addon_dir }}/acc-system/harbor/config/tls.key 2048
+
+- name: Create tls.csr
+  shell: >
+    openssl req -new -key {{ kube_addon_dir }}/acc-system/harbor/config/tls.key -subj "/CN=mantech" -out {{ kube_addon_dir }}/acc-system/harbor/config/tls.csr -config {{ kube_addon_dir }}/acc-system/harbor/config/tls.cnf
+
+- name: Create tls.crt
+  shell: >
+    openssl x509 -req -in {{ kube_addon_dir }}/acc-system/harbor/config/tls.csr -CA {{ kube_addon_dir }}/acc-system/harbor/config/ca.crt -CAkey {{ kube_addon_dir }}/acc-system/harbor/config/ca.key -CAcreateserial -out {{ kube_addon_dir }}/acc-system/harbor/config/tls.crt -days {{ certificates_duration }} -extensions v3_ext -extfile {{ kube_addon_dir }}/acc-system/harbor/config/tls.cnf
+
+#################################################################
+# base ca.crt
+- name: Get ca.crt
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/harbor/config/ca.crt
+  register: ca_crt
+
+- name: Base64 registry_ca_crt
+  shell: >
+    echo {{ ca_crt.stdout | b64encode }}
+  register: base64_ca_crt
+
+- name: set var fact
+  set_fact:
+    base_ca_crt: "{{ base64_ca_crt }}"
+
+#################################################################
+# base_core_tls_crt
+- name: Get core_tls_crt
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/harbor/config/tls.crt
+  register: core_tls_crt
+
+- name: Base64 core_tls_crt
+  shell: >
+    echo {{ core_tls_crt.stdout | b64encode }}
+  register: base64_core_tls_crt
+
+- name: set var fact
+  set_fact:
+    base_core_tls_crt: "{{ base64_core_tls_crt }}"
+
+#################################################################
+# base_core_tls_key
+- name: Get core_tls_key
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/harbor/config/tls.key
+  register: core_tls_key
+
+- name: Base64 core_tls_key
+  shell: >
+    echo {{ core_tls_key.stdout | b64encode }}
+  register: base64_core_tls_key
+
+- name: set var fact
+  set_fact:
+    base_core_tls_key: "{{ base64_core_tls_key }}"
+
+##################################################################
+# base_tls_crt
+- name: Get registry_auth.crt
+  shell: > 
+    cat {{ kube_addon_dir }}/registry/certs/registry_auth.crt
+  register: tls_crt
+
+- name: Base64 tls.crt
+  shell: >
+    echo {{ tls_crt.stdout | b64encode }}
+  register: base64_tls_crt
+
+- name: set var fact
+  set_fact: 
+    base_tls_crt: "{{ base64_tls_crt }}"
+
+###################################################################
+# base_tls_key
+- name: Get registry_auth.key
+  shell: >
+    cat {{ kube_addon_dir }}/registry/certs/registry_auth.key
+  register: tls_key
+
+- name: Base64 tls.key
+  shell: >
+    echo {{ tls_key.stdout | b64encode }}
+  register: base64_tls_key
+
+- name: set var fact
+  set_fact:
+    base_tls_key: "{{ base64_tls_key }}"
+###################################################################
+# base_htpasswd
+- name: Get htpasswd
+  shell: >
+    cat {{ kube_addon_dir }}/registry/auth/htpasswd
+  register: htpasswd
+
+- name: Base64 htpasswd
+  shell: >
+    echo {{ htpasswd.stdout | b64encode }}
+  register: base64_htpasswd
+
+- name: set var fact
+  set_fact:
+    base_htpasswd: "{{ base64_htpasswd }}"
+
+##################################################################
+# base_server_json
+- name: Get server.json
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/harbor/config/server.json
+  register: server_json
+
+- name: Base64 server_json
+  shell: >
+    echo {{ server_json.stdout | b64encode }}
+  register: base64_server_json
+
+- name: set var fact
+  set_fact:
+    base_server_json: "{{ base64_server_json }}"
+
+##################################################################
+# base_signer_json
+- name: Get signer.json
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/harbor/config/signer.json
+  register: signer_json
+
+- name: Base64 signer_json
+  shell: >
+    echo {{ signer_json.stdout | b64encode }}
+  register: base64_signer_json
+
+- name: set var fact
+  set_fact:
+    base_signer_json: "{{ base64_signer_json }}"
+
+##################################################################
+# base_random_passwd
+- name: Base64 random_passwd
+  shell: >
+    echo {{ random_passwd.stdout | b64encode }}
+  register: base64_random_passwd
+
+- name: set var fact
+  set_fact:
+    base_random_passwd: "{{ base64_random_passwd }}"
+
+#######################################################################
+- name: Copy Template
+  template:
+    src: "harbor-ha/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/harbor/{{ item }}"
+  with_items:
+    - harbor-secret.yaml
+
+- name: Deploy harbor setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/harbor
+
+- name: Get harbor-trivy Pod
+  shell: >
+    kubectl get po -n acc-system | grep trivy | tail -n1 | awk '{print $1}'
+  register: trivy_pod
+  until: trivy_pod.stdout != ""
+  retries: 30
+  delay: 5
+
+- name: Wait trivy Pod
+  shell: >
+    kubectl wait --for=condition=ready pod/{{ trivy_pod.stdout }} -n acc-system
+  register: result
+  until: result.rc == 0
+  retries: 20
+  delay: 5
+
+- name: copy trivy db
+  shell: >
+    kubectl exec -it pod/{{ trivy_pod.stdout }} -n acc-system -- mv /home/scanner/db /home/scanner/.cache/trivy/db
+
+- name: get harbor svc IP
+  shell: >
+    kubectl get svc harbor -n acc-system | tail -n1 | awk '{print $3}'
+  register: harbor_ip
+
+- name: print harbor_ip
+  debug: msg="{{ harbor_ip.stdout }}"
+  tags:
+    - output
+
+- name: Wait_for harbor
+  command: curl --insecure -w "%{http_code} Code OK" "https://{{ harbor_ip.stdout }}:443"
+  register: result
+  until: result.stdout.find("200 Code OK") != -1
+  retries: 2000
+  delay: 30
+  changed_when: false
+
+- name: Copy tempalte
+  template:
+    src: "harbor-ha/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/harbor/{{ item }}"
+  with_items:
+    - harbor-project-creator.sh
+
+- name: Mode 755 for harbor-project-creator.sh
+  file:
+    path: "{{ kube_addon_dir }}/acc-system/harbor/harbor-project-creator.sh"
+    mode: 0755
+
+- name: Run harbor-project-creator.sh
+  shell: >
+    /bin/bash -c "{{ kube_addon_dir }}/acc-system/harbor/harbor-project-creator.sh"
+  register: result
+  until: result.rc == 0
+  retries: 20
+  delay: 5

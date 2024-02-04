@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accordion-ingress-controller
+  namespace: acc-system
+  labels:
+    app.kubernetes.io/name: acc-ingress-nginx
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: acc-ingress-nginx
+

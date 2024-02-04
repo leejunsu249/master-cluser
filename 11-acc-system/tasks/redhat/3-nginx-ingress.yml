@@ -1,0 +1,25 @@
+---
+###############################################################################
+# nginx-ingress
+###############################################################################
+- name: nginx-ingress addon directory
+  file: path={{ kube_addon_dir }}/acc-system/nginx-ingress state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "nginx-ingress/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/nginx-ingress/{{ item }}"
+  with_items:
+    - accordion-nginx-ingress-cm.yaml
+    - accordion-nginx-ingress-svc.yaml
+    - accordion-nginx-ingress.yaml
+    - default-http-backend.yaml
+    - nginx-ingress-rbac.yaml
+    - user-nginx-ingress-cm.yaml
+    - user-nginx-ingress.yaml
+    - user-nginx-ingress-class.yaml
+
+- name: Deploy nginx-ingress setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/nginx-ingress

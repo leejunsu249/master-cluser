@@ -1,0 +1,49 @@
+---
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+###############################################################################
+# prometheus
+###############################################################################
+- name: prometheus addon directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/setup state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: prometheus sts directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/sts state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: prometheus sts directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/files state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+- name: Copy Template
+  template:
+    src: "prometheus/setup/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/setup/{{ item }}"
+  with_items:
+    - prometheus-operator-0alertmanagerConfigCustomResourceDefinition.yaml
+    - prometheus-operator-0alertmanagerCustomResourceDefinition.yaml
+    - prometheus-operator-0podmonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0probeCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusruleCustomResourceDefinition.yaml
+    - prometheus-operator-0servicemonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0thanosrulerCustomResourceDefinition.yaml
+
+- name: Deploy Prometheus setup
+  shell: >
+    kubectl create -f {{ kube_addon_dir }}/acc-system/prometheus/setup/{{ item }}
+  with_items:
+    - prometheus-operator-0alertmanagerConfigCustomResourceDefinition.yaml
+    - prometheus-operator-0alertmanagerCustomResourceDefinition.yaml
+    - prometheus-operator-0podmonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0probeCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusruleCustomResourceDefinition.yaml
+    - prometheus-operator-0servicemonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0thanosrulerCustomResourceDefinition.yaml
+  ignore_errors: yes

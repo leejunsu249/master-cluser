@@ -1,0 +1,73 @@
+---
+- name: provisioner addon directory
+  file: path={{ kube_addon_dir }}/acc-system/provisioner/nfs state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+  when:
+    - storage_option == "nfs"
+
+- name: provisioner addon directory
+  file: path={{ kube_addon_dir }}/acc-system/provisioner/ceph state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+  when:
+    - storage_option == "ceph"
+
+- name: Copy Template (nfs)
+  template:
+    src: "provisioner/nfs/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/provisioner/nfs/{{ item }}"
+  with_items:
+    - monitoring-storage-provisioner-rbac.yaml
+    - monitoring-storage-provisioner.yaml
+  ignore_errors: yes
+  when:
+    - storage_option == "nfs"
+
+- name: Copy Template (cephfs)
+  template:
+    src: "provisioner/cephfs/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/provisioner/ceph/{{ item }}"
+  with_items:
+    - cephfs-cm.yaml
+    - cephfs-nodeplugin-rbac.yaml
+    - cephfs-plugin.yaml
+    - cephfs-provisioner-rbac.yaml
+    - cephfs-provisioner.yaml
+    - cephfs-sc.yaml
+    - cephfs-secret.yaml
+  ignore_errors: yes
+  when:
+    - storage_option == "ceph"
+    - ceph_option == "cephfs"
+
+- name: Copy Template (ceph-rbd)
+  template:
+    src: "provisioner/rbd/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/provisioner/ceph/{{ item }}"
+  with_items:
+    - kms-config.yaml
+    - rbd-cm.yaml
+    - rbd-nodeplugin-rbac.yaml
+    - rbd-plugin.yaml
+    - rbd-provisioner-rbac.yaml
+    - rbd-provisioner.yaml
+    - rbd-sc.yaml
+    - rbd-secret.yaml
+    - rbd-vaulttokenreview-rbac.yaml
+  ignore_errors: yes
+  when:
+    - storage_option == "ceph"
+    - ceph_option == "rbd"
+
+################################################################################
+
+- name: Create provisioner (nfs)
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/provisioner/nfs
+  when:
+    - storage_option == "nfs"
+
+- name: Create provisioner (ceph)
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/provisioner/ceph
+  when:
+    - storage_option == "ceph"

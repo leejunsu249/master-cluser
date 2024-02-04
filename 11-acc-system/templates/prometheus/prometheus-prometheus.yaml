@@ -1,0 +1,92 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app: prometheus
+    release: acc
+  name: prometheus-operator-prometheus
+  namespace: acc-system
+spec:
+  imagePullSecrets:
+  - name: infra-registry
+  alerting:
+    alertmanagers:
+    - apiVersion: v2
+      name: alertmanager-main
+      namespace: acc-system
+      port: web
+  externalLabels:
+    cluster: {{ uuid.stdout }}
+  image: {{ base_registry_address }}:{{ base_registry_port }}/prometheus:v2.41.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app: prometheus
+      release: acc
+  podMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  probeNamespaceSelector: {}
+  probeSelector: {}
+{% if prometheus_ha == "yes" %}
+  replicas: 2
+{% else %}
+  replicas: 1
+{% endif %}
+  additionalScrapeConfigs:
+    name: additional-scrape-configs
+    key: prometheus-additional.yaml
+  resources:
+    requests:
+      memory: 400Mi
+  retention: 30d
+  ruleSelector:
+    matchLabels:
+      app: prometheus
+      role: alert-rules
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  tolerations:
+  - operator: Equal
+    effect: NoSchedule
+    key: accordion-role
+    value: infra
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: accordion-role
+            operator: In
+            values:
+            - infra
+{% if prometheus_ha == "yes" %}
+  topologySpreadConstraints:
+  - labelSelector:
+      matchLabels:
+        app: prometheus
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+{% endif %}
+  storage:
+   volumeClaimTemplate:
+     spec:
+       storageClassName: accordion-storage
+       accessModes: ["ReadWriteOnce"]
+       resources:
+         requests:
+           storage: {{ prometheus_storage }}
+  serviceAccountName: prometheus-operator-prometheus
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  version: 2.41.0
+  thanos:
+     baseImage: {{ base_registry_address }}:{{ base_registry_port }}/thanos
+     version: v0.30.2
+     objectStorageConfig:
+       name: thanos-objstore-config
+       key: thanos-objectc-cofnig.yaml

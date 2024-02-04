@@ -1,0 +1,22 @@
+###############################################################################
+# xlog-apiserver
+###############################################################################
+- name: xlog-apiserver addon directory
+  file: path={{ kube_addon_dir }}/acc-system/xlog-apiserver state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy files
+  template:
+    src: "xlog-apiserver/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/xlog-apiserver/{{ item }}"
+  with_items:
+    - xlog-apiserver-clusterrolebinding.yaml
+    - xlog-apiserver-clusterrole.yaml
+    - xlog-apiserver-deploy.yaml
+    - xlog-apiserver-sa.yaml
+    - xlog-apiserver-svc.yaml
+
+- name: Deploy xlog-apiserver setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/xlog-apiserver
+

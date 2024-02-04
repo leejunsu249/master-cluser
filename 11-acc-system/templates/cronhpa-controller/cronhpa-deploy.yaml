@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cronhpa-controller
+  namespace: acc-system
+  labels:
+    app: cronhpa-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cronhpa-controller
+  template:
+    metadata:
+      labels:
+        app: cronhpa-controller
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      serviceAccount: cronhpa-controller
+      containers:
+        - name: cronhpa-controller
+          image: "{{ base_registry_address }}:{{ base_registry_port }}/cronhpa-controller:{{ cronhpa_controller_version }}"
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: timezone
+              readOnly: true
+      volumes:
+        - name: timezone
+          hostPath:
+            type: ""
+            path: /etc/localtime

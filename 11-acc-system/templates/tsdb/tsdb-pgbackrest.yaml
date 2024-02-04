@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+  name: tsdb-pgbackrest
+  namespace: acc-system
+type: Opaque

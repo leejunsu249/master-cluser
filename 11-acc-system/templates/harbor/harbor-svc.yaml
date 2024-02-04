@@ -1,0 +1,281 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor
+  namespace: acc-system
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 32080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+    nodePort: {{ user_registry_port }}
+  - name: notary
+    port: 4443
+    protocol: TCP
+    targetPort: 4443
+    nodePort: 32443
+  selector:
+    app: harbor
+    component: nginx
+    release: harbor
+  sessionAffinity: None
+  type: NodePort
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-chartmuseum
+  namespace: acc-system
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 9999
+  selector:
+    app: harbor
+    component: chartmuseum
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-core
+  namespace: acc-system
+spec:
+  ports:
+  - name: web
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: core
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-database
+  namespace: acc-system
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: harbor
+    component: database
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-jobservice
+  namespace: acc-system
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: jobservice
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-notary-server
+  namespace: acc-system
+spec:
+  ports:
+  - port: 4443
+    protocol: TCP
+    targetPort: 4443
+  selector:
+    app: harbor
+    component: notary-server
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-notary-signer
+  namespace: acc-system
+spec:
+  ports:
+  - port: 7899
+    protocol: TCP
+    targetPort: 7899
+  selector:
+    app: harbor
+    component: notary-signer
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-portal
+  namespace: acc-system
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: portal
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-redis
+  namespace: acc-system
+spec:
+  ports:
+  - port: 6379
+    protocol: TCP
+    targetPort: 6379
+  selector:
+    app: harbor
+    component: redis
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-registry
+  namespace: acc-system
+spec:
+  ports:
+  - name: registry
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+  - name: controller
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: registry
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-trivy
+  namespace: acc-system
+spec:
+  ports:
+  - name: api-server
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: trivy
+    release: harbor
+  sessionAffinity: None
+  type: ClusterIP

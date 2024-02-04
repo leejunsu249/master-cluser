@@ -1,0 +1,62 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: scouter-manager
+  labels:
+    app: scouter-manager
+webhooks:
+- name: pod-hook.monitoring.accordions.co.kr
+  clientConfig:
+    service:
+      name: scouter-manager
+      namespace: acc-system
+      path: /mutate-pod
+    caBundle: "{{ base_scouter_ca_crt.stdout }}"
+  failurePolicy: Ignore
+  rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: [""]
+      apiVersions: ["v1"]
+      resources: ["pods"]
+  namespaceSelector:
+    matchLabels:
+      monitoring.accordions.co.kr/scouter.activate-agent-injection: ""
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+- name: deploy-hook.monitoring.accordions.co.kr
+  clientConfig:
+    service:
+      name: scouter-manager
+      namespace: acc-system
+      path: /mutate-deploy
+    caBundle: "{{ base_scouter_ca_crt.stdout }}"
+  failurePolicy: Ignore
+  rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      resources: ["deployments"]
+  namespaceSelector:
+    matchLabels:
+      monitoring.accordions.co.kr/scouter.activate-agent-injection: ""
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+- name: sts-hook.monitoring.accordions.co.kr
+  clientConfig:
+    service:
+      name: scouter-manager
+      namespace: acc-system
+      path: /mutate-sts
+    caBundle: "{{ base_scouter_ca_crt.stdout }}"
+  failurePolicy: Ignore
+  rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      resources: ["statefulsets"]
+  namespaceSelector:
+    matchLabels:
+      monitoring.accordions.co.kr/scouter.activate-agent-injection: ""
+  admissionReviewVersions: ["v1"]
+  sideEffects: None

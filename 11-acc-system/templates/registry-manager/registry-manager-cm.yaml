@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-manager-config
+  namespace: acc-system
+data:
+  config: |
+    controller:
+      webhook:
+        port: 9443
+    excludeNamespaces:
+      - kube-system
+      - kube-public

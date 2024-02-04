@@ -1,0 +1,38 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterPipelineTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: vcs -> java build -> tomcat image
+  name: acc-vcs-jbuild-tomcat
+spec:
+  tasks:
+  - name: vcs-get
+    templateRef:
+      clusterScope: true
+      name: acc-vcs-git
+    values:
+      workspace: scm
+      cleanWorkspace: false
+  - depends: vcs-get.Succeeded
+    name: src-build
+    templateRef:
+      clusterScope: true
+      name: acc-src-mvn
+    values:
+      cmd: mvn clean package -f scm/pom.xml
+      mavenHome: .
+  - depends: src-build.Succeeded
+    name: dockerfile-tomcat
+    templateRef:
+      clusterScope: true
+      name: acc-dockerfile-tomcat
+    values:
+      workspace: scm
+  - depends: dockerfile-tomcat.Succeeded
+    name: image-build
+    templateRef:
+      clusterScope: true
+      name: acc-image-kaniko
+    values:
+      additionalCreds:
+      - infra-registry

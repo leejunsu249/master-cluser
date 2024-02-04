@@ -1,0 +1,28 @@
+---
+###############################################################################
+# alert-server
+###############################################################################
+- name: alert-server addon directory
+  file: path={{ kube_addon_dir }}/acc-system/alert-server state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy files
+  copy:
+    src: alert-server/alert-server-cm.yaml
+    dest: "{{ kube_addon_dir }}/acc-system/alert-server/alert-server-cm.yaml"
+
+- name: Copy files
+  template:
+    src: "alert-server/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/alert-server/{{ item }}"
+  with_items:
+    - alert-server-clusterrolebinding.yaml
+    - alert-server-clusterrole.yaml
+    - alert-server-deploy.yaml
+    - alert-server-pvc.yaml
+    - alert-server-svc.yaml
+    - alert-server-sa.yaml
+
+- name: Deploy alert-server setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/alert-server

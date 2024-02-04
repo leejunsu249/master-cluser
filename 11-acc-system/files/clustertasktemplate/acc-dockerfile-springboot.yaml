@@ -1,0 +1,72 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Dockerfile: springboot'
+    cicd.accordions.co.kr/category: image
+  name: acc-dockerfile-springboot
+spec:
+  container:
+    args:
+    - |
+      export workspace="{{.values.workspace}}"
+      export openjdkImage="{{.values.openjdkImage}}"
+      export packageType="{{.values.packageType}}"
+      export appName="{{.values.appName}}"
+      export dockerFile=Dockerfile
+      echo -e "[INFO] IMAGE       ===> $openjdkImage"
+      echo -e "[INFO] packageType ===> $packageType"
+      echo -e "[INFO] appName     ===> $appName"
+      if [ "$appName" == "" ];then
+        appCount=`find $workspace -type f -iname "*.${packageType}" | wc -l `
+        if [ $appCount -eq 0 ]; then
+        echo "No app exists"
+        exit 1
+        fi
+        find $workspace -type f -iname "*.${packageType}" -exec mv -f {} app.${packageType} \;
+      else
+        appCount=`find $workspace -type f -iname "${appName}.{packageType}" | wc -l `
+        if [ $appCount -eq 0 ]; then
+        echo "No app exist"
+        exit 1
+        fi
+        find $workspace -type f -iname "${appName}.${packageType}" -exec mv -f {} app.${packageType} \;
+      fi
+      echo -e "{{.values.dockerfileContents | nindent 0}}" > $dockerFile
+      echo "[INFO] Dockerfile  ==="
+      cat $dockerFile
+    command:
+      - sh
+      - '-c'
+    image: base_registry_address:base_registry_port/busybox
+    imagePullPolicy: Always
+    name: ''
+    resources: {}
+  valueschema:
+    properties:
+      appName:
+        default: ''
+        description: 애플리케이션이 여러개인 경우 지정(ex demo-0.0.1-SNAPSHOT)
+        type: string
+      dockerfileContents:
+        default: |-
+          FROM $openjdkImage
+          COPY --chown=accordion app.${packageType} ./
+        format: textarea
+        type: string
+      openjdkImage:
+        default: base_registry_address:base_registry_port/accordion/openjdk:jdk8
+        description: 오픈JDK 이미지
+        enum:
+          - base_registry_address:base_registry_port/accordion/openjdk:jdk11
+          - base_registry_address:base_registry_port/accordion/openjdk:jdk8
+        type: string
+      packageType:
+        enum:
+          - jar
+          - war
+        type: string
+      workspace:
+        default: .
+        type: string
+    type: object

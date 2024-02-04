@@ -1,0 +1,29 @@
+###############################################################################
+# cicd-apiserver
+###############################################################################
+- name: cicd-apiserver addon directory
+  file: path={{ kube_addon_dir }}/acc-system/cicd-apiserver state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  template:
+    src: "cicd-apiserver/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/cicd-apiserver/{{ item }}"
+  with_items:
+    - cicd-apiserver-cm.yaml
+    - cicd-apiserver-deploy.yaml
+    - cicd-apiserver-rolebinding.yaml
+    - cicd-apiserver-role.yaml
+    - cicd-apiserver-sa.yaml
+    - cicd-apiserver-svc.yaml
+
+- name: Deploy cicd-apiserver setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/cicd-apiserver
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: user-ingress-controller
+  namespace: acc-system
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"
+    prometheus.io/scheme: http
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/part-of: ingress-nginx
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/part-of: ingress-nginx
+    spec:
+      hostNetwork: true
+      imagePullSecrets:
+      - name: infra-registry
+      serviceAccountName: nginx-ingress-serviceaccount
+      terminationGracePeriodSeconds: 60
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - sysctl -w net.core.somaxconn=32768; sysctl -w net.ipv4.ip_local_port_range="1024 65535"
+        image: {{ base_registry_address }}:{{ base_registry_port }}/alpine:3.14.2
+        imagePullPolicy: Always
+        name: sysctl
+        securityContext:
+          privileged: true
+      containers:
+      - image: {{ base_registry_address }}:{{ base_registry_port }}/controller:v1.6.4
+        name: nginx-ingress-controller
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 10254
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        args:
+        - /nginx-ingress-controller
+        - --default-backend-service=$(POD_NAMESPACE)/default-http-backend
+        - --ingress-class=nginx
+        #- --publish-service=$(POD_NAMESPACE)/nginx-ingress-lb
+        - --configmap=$(POD_NAMESPACE)/user-nginx-ingress-conf
+        - --controller-class=k8s.io/ingress-nginx
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+

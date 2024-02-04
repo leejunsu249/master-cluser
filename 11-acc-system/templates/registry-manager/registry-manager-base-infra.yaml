@@ -1,0 +1,15 @@
+---
+apiVersion: management.accordions.co.kr/v1beta1
+kind: Registry
+metadata:
+  name: infra-registry
+  labels:
+    accordions.co.kr/infra-registry: ""
+stringEntry:
+{% if registry_domain_option == "yes" %}
+  server: "{{ base_registry_domain_address }}:{{ base_registry_port }}"
+{% else %}
+  server: "{{ base_registry_address }}:{{ base_registry_port }}"
+{% endif %}
+  username: accordion-package
+  password: glpat-RaJunqjx6zyu4_T5PAyf

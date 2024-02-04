@@ -1,0 +1,288 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scouter-manager
+  namespace: acc-system
+  labels:
+    app: scouter-manager
+data:
+  deployment.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: scouter-server
+      labels:
+        app: scouter-server
+    spec:
+      selector:
+        matchLabels:
+          app: scouter-server
+      strategy:
+        type: Recreate
+      template:
+        metadata:
+          labels:
+            app: scouter-server
+        spec:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - preference:
+                  matchExpressions:
+                  - key: accordion-role
+                    operator: In
+                    values:
+                    - infra
+                weight: 100
+          containers:
+          - name: server
+            image: "{{ base_registry_address }}:{{ base_registry_port }}/scouter-server:{{ scouter_server_version }}"
+            imagePullPolicy: Always
+            env:
+            - name: TSDB_HOST
+              value: tsdb.acc-system
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            ports:
+            - containerPort: 6100
+              name: monitor-tcp
+            - containerPort: 6100
+              name: monitor-udp
+              protocol: UDP
+            - containerPort: 6188
+              name: api
+            resources:
+              requests:
+                cpu: 0
+                memory: 1536Mi
+              limits:
+                cpu: 0
+                memory: 1536Mi
+            volumeMounts:
+            - name: db
+              mountPath: /opt/server/database
+            - name: tz
+              mountPath: /etc/localtime
+          - name: exporter
+            image: "{{ base_registry_address }}:{{ base_registry_port }}/scouter-exporter:{{ scouter_exporter_version }}"
+            imagePullPolicy: Always
+            livenessProbe:
+              httpGet:
+                path: /healthz
+                port: 9909
+              initialDelaySeconds: 10
+            readinessProbe:
+              httpGet:
+                path: /ready
+                port: 9909
+              initialDelaySeconds: 10
+          imagePullSecrets:
+          - name: infra-registry
+          serviceAccountName: scouter-server
+          tolerations:
+          - effect: NoSchedule
+            key: accordion-role
+            operator: Equal
+            value: infra
+          volumes:
+          - name: tz
+            hostPath:
+              path: /etc/localtime
+          - name: db
+            persistentVolumeClaim:
+              claimName: scouter-server
+  persistentvolumeclaim.yaml: |
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: scouter-server
+      labels:
+        app: scouter-server
+    spec:
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: accordion-storage
+  service.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: scouter-server
+      labels:
+        app: scouter-server
+    spec:
+      type: ClusterIP
+      selector:
+        app: scouter-server
+      ports:
+      - name: monitor-tcp
+        port: 6100
+      - name: monitor-udp
+        port: 6100
+        protocol: UDP
+      - name: api
+        port: 6188
+      - name: server
+        port: 6180
+      - name: exporter
+        port: 9909
+  serviceaccount.yaml: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: scouter-server
+      labels:
+        app: scouter-server
+  servicemonitor.yaml: |
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: scouter-server
+      labels:
+        app: scouter-server
+    spec:
+      selector:
+        matchLabels:
+          app: scouter-server
+      endpoints:
+      - path: /scouter/metrics
+        port: exporter
+        interval: 2s
+  mutationconfig.yaml: |
+    initContainer:
+      name: inject-scouter-agent
+      image: "{{ base_registry_address }}:{{ base_registry_port }}/scouter-agent:{{ scouter_agent_version }}"
+      imagePullPolicy: Always
+      command:
+      - "/bin/sh"
+      - "-c"
+      - /inject.sh
+      volumeMounts:
+      - name: scouter-agent
+        mountPath: /scouter-agent
+      - name: scouter-agent-config
+        mountPath: /tmp/scouter-agent.conf
+        subPath: scouter-agent.conf
+    env:
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    - name: SCOUTER_HOST
+      value: -Dnet_collector_ip=
+    - name: SCOUTER_CNF
+      value: -Dscouter.config=/scouter-agent/scouter.conf
+    - name: SCOUTER_OPTS
+      value: -javaagent:/scouter-agent/scouter.agent.jar $(SCOUTER_CNF)
+    - name: JAVA_OPTS
+      value: -Dobj_name=$(POD_NAMESPACE) $(SCOUTER_HOST) $(SCOUTER_OPTS)
+    volumeMount:
+      name: scouter-agent
+      mountPath: /scouter-agent
+    volumes:
+    - name: scouter-agent
+      emptyDir: {}
+    - name: scouter-agent-config
+      configMap:
+        name: scouter-agent
+    imagePullSecret:
+      name: infra-registry
+  configmap.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: scouter-agent
+    data:
+      scouter-agent.conf: |
+        #### Profile
+        ## Identifying header key of remote ip. (default: "")
+        ## eg) X-Forwarded-For
+        trace_http_client_ip_header_key=X-Forwarded-For
+        ## Http parameter profile. (default: false)
+        profile_http_parameter_enabled=false
+        ## Http Header profile. (default: false)
+        profile_http_header_enabled=false
+        ## Http query string profile. (default: false)
+        profile_http_querystring_enabled=false
+        ## Stack profile in occurrence of sql error. (default: false)
+        profile_fullstack_hooked_exception_enabled=false
+        ## Spring controller method parameter profile.
+        ## Value to be profiled is toString() result of each param objects. (default: true)
+        profile_spring_controller_method_parameter_enabled=true
+        #### Trace
+        ## User ID based (0:Remote IP Address, 1:Cookie(JSESSIONID), 2:Cookie(SCOUTER), 3:Header).
+        ## Able to set value for 1.Cookie and 3.Header - refer to 'trace_user_session_key'. (default: 2)
+        trace_user_mode=2
+        ## JSession key for user ID. (default: JSESSIONID)
+        trace_user_session_key=JSESSIONID
+        #### Hook
+        ## Activating public method hooking. (default: true)
+        hook_method_access_public_enabled=true
+        ## Activating private method hooking. (default: false)
+        hook_method_access_private_enabled=false
+        ## Activating protected method hooking. (default: false)
+        hook_method_access_protected_enabled=false
+        ## Activating none(default) method hooking. (default: false)
+        hook_method_access_none_enabled=false
+        ## Activating lambda method hooking. (default: true)
+        hook_method_lambda_enable=true
+        ## Method set for method hooking. (default: "")
+        ## eg) my.app.*Controller.*,my.app.*Service.*,my.app.*Repository.*
+        hook_method_patterns=
+        ## Exception class patterns.
+        ## These will seem as error on xlog view. (default: "")
+        ## eg) my.app.BizException,my.app.exception.*Exception
+        hook_exception_class_patterns=
+        ## Exception class exclude patterns.
+        ## These will exclude from 'hook_exception_class_patterns'. (default: "")
+        hook_exception_exclude_class_patterns=
+        ## Exception handler patterns.
+        ## Exceptions passed to these methods are treated as error on xlog view. (default: "")
+        ## eg) my.app.myHandler.handleException
+        hook_exception_handler_method_patterns=
+        ## Exception handler exclude class name patterns(can not include star-* in patterns).
+        ## eg) my.app.MyManagedException,MyBizException
+        hook_exception_handler_exclude_class_patterns=
+        #### XLog error marking
+        ## Mark as error on xlog flag if SqlException is occured. (default: true)
+        xlog_error_on_sqlexception_enabled=true
+        ## Mark as error on xlog flag if Api call errors are occured. (default: true)
+        xlog_error_on_apicall_exception_enabled=true
+        ## Mark as error on xlog flag if redis error is occured. (default: true)
+        xlog_error_on_redis_exception_enabled=true
+        ## Leave an error message at xlog in case of over timing query (ms). (default: 30000)
+        xlog_error_sql_time_max_ms=30000
+        ## Leave an error message at xlog in case of over fetching (fetch count). (default: 10000)
+        xlog_error_jdbc_fetch_max=10000
+        #### XLog discard options
+        ## XLog discard service patterns (like readiness check or prometheus metric scrap). (default: "")
+        ## No xlog data, but apply to tps and summary.
+        ## eg) /user/{userId}<GET>,/device/*
+        xlog_discard_service_patterns=
+        ## Do not discard error even if it's discard pattern. (default: true)
+        xlog_discard_service_show_error=true
+        #### XLog soft sampling options
+        ## XLog sampling mode enabled. (default: false)
+        xlog_sampling_enabled=true
+        ## XLog sampling but discard profile only not XLog. (default: false)
+        xlog_sampling_only_profile=false
+        ## XLog sampling bound millisecond - step1(range - from 0 to here)". (default: 100)
+        xlog_sampling_step1_ms=1000
+        ## XLog sampling step1 percentage(%). (default: 3)
+        xlog_sampling_step1_rate_pct=3
+        ## XLog sampling bound millisecond - step2(range - from step1 to here). (default: 1000)
+        xlog_sampling_step2_ms=2000
+        ## XLog sampling step2 percentage(%). (default: 10)
+        xlog_sampling_step2_rate_pct=5
+        ## XLog sampling bound millisecond - step3(range - from step2 to here). (default: 3000)
+        xlog_sampling_step3_ms=3000
+        ## XLog sampling step3 percentage(%). (default: 30)
+        xlog_sampling_step3_rate_pct=20
+        ## XLog sampling over step3 percentage(%). (default: 100)
+        xlog_sampling_over_rate_pct=100

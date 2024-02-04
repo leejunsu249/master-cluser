@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  labels:
+    alertmanager: main
+    app: alertmanager
+  name: main
+  namespace: acc-system
+spec:
+  imagePullSecrets:
+  - name: infra-registry
+  image: {{ base_registry_address }}:{{ base_registry_port }}/alertmanager:v0.25.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      alertmanager: main
+      app: alertmanager
+
+{% if alertmanager_ha == "yes" %}
+  replicas: 2
+{% else %}
+  replicas: 1
+{% endif %}
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: alertmanager-main
+  version: 0.25.0
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: accordion-role
+            operator: In
+            values:
+            - infra
+  tolerations:
+  - operator: Equal
+    effect: NoSchedule
+    key: accordion-role
+    value: infra
+{% if alertmanager_ha == "yes" %}
+  topologySpreadConstraints:
+  - labelSelector:
+      matchLabels:
+        alertmanager: main
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+{% endif %}
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: accordion-storage
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ alertmanager_storage }}

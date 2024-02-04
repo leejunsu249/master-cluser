@@ -1,0 +1,27 @@
+---
+- name: metallb addon directory
+  file: path={{ kube_addon_dir }}/acc-system/metallb/config state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "metallb/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/metallb/{{ item }}"
+  with_items:
+    - metallb.yaml
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "metallb/config/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/metallb/config/{{ item }}"
+  with_items:
+    - metallb-base-config.yaml
+    - metallb-layer2-config.yaml
+  ignore_errors: yes
+
+################################################################################
+
+- name: Create metallb
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/metallb/metallb.yaml

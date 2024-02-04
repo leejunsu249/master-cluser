@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xlog-apiserver
+  namespace: acc-system
+  labels:
+    app: xlog-apiserver
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: xlog-apiserver
+

@@ -1,0 +1,33 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Source Build: maven'
+    cicd.accordions.co.kr/category: build
+  name: acc-src-mvn
+spec:
+  container:
+    args:
+    - '{{.values.cmd}} -Duser.home={{.values.mavenHome}}'
+    command:
+    - sh
+    - -c
+    image: '{{.values.mavenImage}}'
+  valueschema:
+    properties:
+      cmd:
+        default: mvn clean package
+        description: maven 실행의 커맨드 명령어
+        type: string
+      mavenHome:
+        default: .
+        type: string
+      mavenImage:
+        default: base_registry_address:base_registry_port/maven:3.6.0-jdk-8-alpine
+        description: maven 이미지
+        enum:
+        - base_registry_address:base_registry_port/maven:3.6.0-jdk-8-alpine
+        - base_registry_address:base_registry_port/maven:3.6.0-jdk-11
+        type: string
+    type: object

@@ -1,0 +1,21 @@
+---
+apiVersion: management.accordions.co.kr/v1beta1
+kind: Registry
+metadata:
+  name: user-registry
+stringEntry:
+{% if registry_domain_option == "yes" %}
+  server: "https://{{ user_registry_domain_address }}:{{ user_registry_port }}"
+{% else %}
+  server: "https://{{ user_registry_address }}:{{ user_registry_port }}"
+{% endif %}
+{% if user_registry_option == "harbor" %}
+  username: admin
+{% else %}
+  username: {{ user_registry_id }}
+{% endif %}
+{% if user_registry_external == "yes" %}
+  password: {{ user_registry_pw }}
+{% else %}
+  password: {{ registry_passwd.stdout }}
+{% endif %}

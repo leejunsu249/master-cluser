@@ -1,0 +1,22 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Shell: exist file'
+    cicd.accordions.co.kr/category: normal
+  name: acc-shell-checkfile
+spec:
+  container:
+    args:
+    - '[[ -f "{{.values.filename}}" ]]'
+    command:
+    - sh
+    - -c
+    image: base_registry_address:base_registry_port/busybox
+  valueschema:
+    properties:
+      filename:
+        description: 파일명
+        type: string
+    type: object
+

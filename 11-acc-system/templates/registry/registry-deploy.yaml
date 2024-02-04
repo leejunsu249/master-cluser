@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: user-registry
+  namespace: acc-system
+  labels:
+    app: user-registry
+spec:
+  replicas: 1
+  selector:
+    app: user-registry
+  template:
+    metadata:
+      labels:
+        app: user-registry
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      containers:
+      - name: registry
+        image: {{ base_registry_address }}:{{ base_registry_port }}/registry:2
+        imagePullPolicy: Always
+        env:
+        - name: REGISTRY_HTTP_ADDR
+          value: :5000
+        - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+          value: /var/lib/registry
+        - name: REGISTRY_HTTP_TLS_CERTIFICATE
+          value: /certs/domain.crt
+        - name: REGISTRY_HTTP_TLS_KEY
+          value: /certs/domain.key
+        volumeMounts:
+        - name: image-store
+          mountPath: /var/lib/registry
+        - name: cert-dir
+          mountPath: /certs
+        - name: timezone
+          mountPath: /etc/localtime
+        ports:
+        - containerPort: 5000
+          name: registry
+          protocol: TCP
+      volumes:
+      - name: image-store
+        persistentVolumeClaim:
+          claimName: registry-pvc
+      - name: cert-dir
+        secret:
+          secretName: registry-secret
+      - name: timezone
+        hostPath:
+          path: /etc/localtime

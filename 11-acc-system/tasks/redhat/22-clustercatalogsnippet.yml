@@ -1,0 +1,26 @@
+###############################################################################
+# clustercatalogsnippet
+###############################################################################
+- name: clustercatalogsnippet addon directory
+  file: path={{ kube_addon_dir }}/acc-system/clustercatalogsnippet state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  copy:
+    src: "clustercatalogsnippet/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/clustercatalogsnippet/{{ item }}"
+  with_items:
+    - clustercatalogsnippet-cm.yaml
+    - clustercatalogsnippet-deploy.yaml
+    - clustercatalogsnippet-secret.yaml
+
+- name: Deploy clustercatalogsnippet setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/clustercatalogsnippet
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

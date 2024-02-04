@@ -1,0 +1,79 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Source Get: svn'
+    cicd.accordions.co.kr/category: vcs
+  name: acc-vcs-svn
+spec:
+  container:
+    args:
+    - --repo={{.values.repo}}
+    - --clean-workspace={{.values.cleanWorkspace}}
+    - --workspace={{.values.workspace}}
+    - --revision={{.values.revision}}
+    - --depth={{.values.depth}}
+    - '{{- if ne .values.auth.type "none"}}--auth-type={{.values.auth.type}}{{- end}}'
+    - '{{- if ne .values.auth.type "none"}}--auth-json-data={{b64enc .values.auth.cred}}{{- end}}'
+    image: base_registry_address:base_registry_port/accordion/cicd-vcs-svn:cicd_vcs_svn_version
+    imagePullPolicy: Always
+  valueschema:
+    properties:
+      auth:
+        x-ui-order: 4
+        anyOf:
+          - properties:
+              type:
+                x-ui-display: hidden
+                enum:
+                  - none
+                type: string
+            title: none
+          - properties:
+              cred:
+                type: secretData
+                x-kube-type: kubernetes.io/basic-auth
+              type:
+                x-ui-display: hidden
+                enum:
+                  - basic
+                type: string
+            title: basic auth
+          - properties:
+              cred:
+                type: secretData
+                x-kube-type: kubernetes.io/ssh-auth
+              type:
+                x-ui-display: hidden
+                enum:
+                  - ssh
+                type: string
+            title: ssh auth
+      cleanWorkspace:
+        x-ui-order: 5
+        default: true
+        type: boolean
+      depth:
+        x-ui-order: 3
+        default: infinity
+        description: limit operation by depth
+        enum:
+          - infinity
+          - empty
+          - files
+          - emmediates
+        type: string
+      repo:
+        x-ui-order: 1
+        description: SVN URL
+        format: uri
+        type: string
+      revision:
+        x-ui-order: 2
+        default: HEAD
+        type: string
+      workspace:
+        x-ui-order: 6
+        default: .
+        type: string
+    type: object

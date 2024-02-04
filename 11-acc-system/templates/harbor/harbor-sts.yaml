@@ -1,0 +1,412 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: database
+    release: harbor
+  name: harbor-database
+  namespace: acc-system
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: database
+      release: harbor
+  serviceName: harbor-database
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: database
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        envFrom:
+        - secretRef:
+            name: harbor-database
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-db:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          exec:
+            command:
+            - /docker-healthcheck.sh
+          failureThreshold: 3
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: database
+        readinessProbe:
+          exec:
+            command:
+            - /docker-healthcheck.sh
+          failureThreshold: 3
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - -c
+        - '[ -e /var/lib/postgresql/data/postgresql.conf ] && [ ! -d /var/lib/postgresql/data/pgdata
+          ] && mkdir -m 0700 /var/lib/postgresql/data/pgdata && mv /var/lib/postgresql/data/*
+          /var/lib/postgresql/data/pgdata/ || true'
+        command:
+        - /bin/sh
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-db:v2.7.1
+        imagePullPolicy: Always
+        name: data-migrator
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+      - args:
+        - -c
+        - chmod 700 /var/lib/postgresql/data/pgdata || true
+        command:
+        - /bin/sh
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-db:v2.7.1
+        imagePullPolicy: Always
+        name: data-permissions-ensurer
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      labels:
+        app: harbor
+        release: harbor
+      name: database-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ harbor_db_storage }}
+      storageClassName: accordion-storage
+      volumeMode: Filesystem
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: trivy
+    release: harbor
+  name: harbor-trivy
+  namespace: acc-system
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: trivy
+      release: harbor
+  serviceName: harbor-trivy
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: trivy
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: HTTP_PROXY
+        - name: HTTPS_PROXY
+        - name: NO_PROXY
+          value: harbor-core,harbor-jobservice,harbor-database,harbor-chartmuseum,harbor-notary-server,harbor-notary-signer,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
+        - name: SCANNER_LOG_LEVEL
+          value: info
+        - name: SCANNER_TRIVY_CACHE_DIR
+          value: /home/scanner/.cache/trivy
+        - name: SCANNER_TRIVY_REPORTS_DIR
+          value: /home/scanner/.cache/reports
+        - name: SCANNER_TRIVY_DEBUG_MODE
+          value: "false"
+        - name: SCANNER_TRIVY_VULN_TYPE
+          value: os,library
+        - name: SCANNER_TRIVY_GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: gitHubToken
+              name: harbor-trivy
+        - name: SCANNER_TRIVY_SEVERITY
+          value: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+        - name: SCANNER_TRIVY_IGNORE_UNFIXED
+          value: "false"
+        - name: SCANNER_TRIVY_SKIP_UPDATE
+          value: "false"
+        - name: SCANNER_TRIVY_INSECURE
+          value: "false"
+        - name: SCANNER_API_SERVER_ADDR
+          value: :8080
+        - name: SCANNER_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: harbor-trivy
+        - name: SCANNER_STORE_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: harbor-trivy
+        - name: SCANNER_JOB_QUEUE_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: harbor-trivy
+        image: {{ base_registry_address }}:{{ base_registry_port }}/trivy-adapter-photon:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /probe/healthy
+            port: api-server
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: trivy
+        ports:
+        - containerPort: 8080
+          name: api-server
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /probe/ready
+            port: api-server
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /home/scanner/.cache
+          name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: harbor
+        chart: harbor
+        heritage: Helm
+        release: harbor
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ harbor_trivy_storage }}
+      storageClassName: accordion-storage
+      volumeMode: Filesystem
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: redis
+    release: harbor
+  name: harbor-redis
+  namespace: acc-system
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: redis
+      release: harbor
+  serviceName: harbor-redis
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: redis
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - image: {{ base_registry_address }}:{{ base_registry_port }}/redis-photon:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 6379
+          timeoutSeconds: 1
+        name: redis
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 6379
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/redis
+          name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      labels:
+        app: harbor
+        release: harbor
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ harbor_redis_storage }}
+      storageClassName: accordion-storage
+      volumeMode: Filesystem
+

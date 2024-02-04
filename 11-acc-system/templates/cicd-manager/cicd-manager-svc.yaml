@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cicd-webhook-service
+  namespace: acc-system
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    app: cicd-manager

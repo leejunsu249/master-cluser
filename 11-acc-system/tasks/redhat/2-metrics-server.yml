@@ -1,0 +1,18 @@
+---
+- name: metrics-server addon directory
+  file: path={{ kube_addon_dir }}/acc-system/metrics-server state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "metrics-server/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/metrics-server/{{ item }}"
+  with_items:
+    - metrics-server.yaml
+  ignore_errors: yes
+
+################################################################################
+
+- name: Create metrics-server
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/metrics-server/metrics-server.yaml

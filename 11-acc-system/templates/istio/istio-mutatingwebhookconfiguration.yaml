@@ -1,0 +1,300 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: istio-revision-tag-default
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: rev.namespace.sidecar-injector.istio.io
+  namespaceSelector:
+    matchExpressions:
+    - key: istio.io/rev
+      operator: In
+      values:
+      - default
+    - key: istio-injection
+      operator: DoesNotExist
+  objectSelector:
+    matchExpressions:
+    - key: sidecar.istio.io/inject
+      operator: NotIn
+      values:
+      - "false"
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: rev.object.sidecar-injector.istio.io
+  namespaceSelector:
+    matchExpressions:
+    - key: istio.io/rev
+      operator: DoesNotExist
+    - key: istio-injection
+      operator: DoesNotExist
+  objectSelector:
+    matchExpressions:
+    - key: sidecar.istio.io/inject
+      operator: NotIn
+      values:
+      - "false"
+    - key: istio.io/rev
+      operator: In
+      values:
+      - default
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: namespace.sidecar-injector.istio.io
+  namespaceSelector:
+    matchExpressions:
+    - key: istio-injection
+      operator: In
+      values:
+      - enabled
+  objectSelector:
+    matchExpressions:
+    - key: sidecar.istio.io/inject
+      operator: NotIn
+      values:
+      - "false"
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: object.sidecar-injector.istio.io
+  namespaceSelector:
+    matchExpressions:
+    - key: istio-injection
+      operator: DoesNotExist
+    - key: istio.io/rev
+      operator: DoesNotExist
+  objectSelector:
+    matchExpressions:
+    - key: sidecar.istio.io/inject
+      operator: In
+      values:
+      - "true"
+    - key: istio.io/rev
+      operator: DoesNotExist
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+  
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: istio-sidecar-injector
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: rev.namespace.sidecar-injector.istio.io
+  namespaceSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  objectSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: rev.object.sidecar-injector.istio.io
+  namespaceSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  objectSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: namespace.sidecar-injector.istio.io
+  namespaceSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  objectSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvVENDQWVXZ0F3SUJBZ0lSQU9RUmlDQjE4MDNTOG51SDljUzkzTUF3RFFZSktvWklodmNOQVFFTEJRQXcKR0RFV01CUUdBMVVFQ2hNTlkyeDFjM1JsY2k1c2IyTmhiREFlRncweU16QXpNRFl3TmpNNE1URmFGdzB6TXpBegpNRE13TmpNNE1URmFNQmd4RmpBVUJnTlZCQW9URFdOc2RYTjBaWEl1Ykc5allXd3dnZ0VpTUEwR0NTcUdTSWIzCkRRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzJxY2U1aW5oN2FCV2Q3a1NNd3NibzVtZ0pnclpsK3hROERqbUEKdFpiekVWWXVna1pWS21CSEdxTElldnR1d1NrSjhpSExDcGxsYWtUTFE5N2JTU25lTms5MGxVZDZ0M1BNY3Nlcwp5bXVnMGdGNUphTHExeXFZS2sxc0ppY2tHM0VOOWN5VjFIak9vbWZha2NoeWloc1ArZGtncVpnMHBDVjhUUmllClBYa3lwand3NTRrb1c0YWpBUVJqUGRIRE51bnpmajgrMnJpbnBCR1J5VC9VbFQvd3JhbVllbGh3LzVVaDZXeEwKaitJNFZKNHV0M1VUNC84aTZKYm1FcUxiVm4zU1hybXdzN25oR2ZZdUs4OERqV0R6ai9Ybm5JT0greDVoOENxNwpGK0NVcFBjeFZPV3Zqc0NPK2ZIZjZibStNNmRadU9CUlpzR3A4dmdQVWpTTHZSYVhBZ01CQUFHalFqQkFNQTRHCkExVWREd0VCL3dRRUF3SUNCREFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlQ1aGZVb09Qa3EKOFAyZk5ZOWZBazJaVmxiNW1qQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFVK3MyQzlvZFNnOVRxN3VJa0pJQwppS0Q2SWtSVmtLZ2NTNDg4OUtsbFlrSWdQeXRxRHRhK08yN0tOU0F3VEx4dmtBajFONEx5VER1SVZ3WjduV0xOCkpzYTZhbnJ4ODdkS2tvV1JoZG0xb1duRFhNSkY2MUMwelU1N1h5RGcrK0lKUVQxTGIvY0ZxZkVOQTlGYXpCUFkKY04wbFZ0WjZwZ3JmMDh6S2kvcHRoZms4U2R4dkFlSDhDc3hHM0xZMzNGL1g0S3VYdUIrbTdVd0RheFB3ZnpmYQp1TkZKWjlDQm1xcDNIYnVxSElXMFJsRUZrNmhOUVpwaUJtODk2RGxabG9OZ2tYcVFkSU0xVnBUTjNyNkx4TFdUCnkzRWR5S0grSnI2TGZ4QzVwOEQ5NU4wRUZEbHcxeXgzQmxlRG5SN0pFeVFCTWxoT3lXUGNub1RWS1N5VHlRZVoKT2c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /inject
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: object.sidecar-injector.istio.io
+  namespaceSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  objectSelector:
+    matchLabels:
+      istio.io/deactivated: never-match
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10

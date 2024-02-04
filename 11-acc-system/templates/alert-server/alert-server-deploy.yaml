@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-server
+  namespace: acc-system
+  labels:
+    app: alert-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-server
+  template:
+    metadata:
+      labels:
+        app: alert-server
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      serviceAccountName: alert-server
+      containers:
+      - name: server
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/alert-server:{{ alert_server_version }}"
+        imagePullPolicy: Always
+        command:
+        - /server
+        - --template-configmap=acc-system/alert-server
+        - --alertmanager-secret=acc-system/alertmanager-main
+        - --webhook-url=http://alert-server.acc-system:8080/webhook/v1beta1
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+        - name: plugins
+          mountPath: /plugins
+          readOnly: true
+        - name: templates
+          mountPath: /templates
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+      - name: plugins
+        persistentVolumeClaim:
+          claimName: alert-server
+      - name: templates
+        configMap:
+          name: alert-server

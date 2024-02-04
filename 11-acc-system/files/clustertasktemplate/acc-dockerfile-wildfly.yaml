@@ -1,0 +1,74 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Dockerfile: wildfly'
+    cicd.accordions.co.kr/category: image
+  name: acc-dockerfile-wildfly
+spec:
+  container:
+    args:
+    - |
+      export wildflyImage={{.values.wildflyImage}}
+      export warName={{.values.warName}}
+      export workspace={{.values.workspace}}
+      export dockerFile=Dockerfile
+      export contextpath={{.values.contextpath}}
+      echo -e "[INFO] IMAGE ===> $wildflyImage"
+      echo -e "[INFO] CONTEXTPATH ===> $contextpath"
+      echo -e "[INFO] WARNAME     ===> $warName"
+      if [ "$contextpath" == "/" ];then
+      contextpath=ROOT
+      fi
+      contextpath=`echo $contextpath | tr -d '/' `
+      if [ "$warName" == "" ];then
+        warCount=`find $workspace -type f -iname "*.war" | wc -l `
+        if [ $warCount -eq 0 ]; then
+        echo "no war file exist"
+        exit 1
+        fi
+      find $workspace -type f -iname "*.war" -exec mv -f {} ${contextpath}.war \;
+      else
+        warCount=`find $workspace -type f -iname "${warName}.war" | wc -l `
+        if [ $warCount -eq 0 ]; then
+        echo "no war file exist"
+        exit 1
+        fi
+      find $workspace -type f -iname "${warName}.war" -exec mv -f {} $contextpath.war \;
+      fi
+      echo -e "{{.values.dockerfileContents | nindent 0}}" > $dockerFile
+      echo '[INFO] write Dockerfile'; \
+      cat $dockerFile
+    command:
+    - sh
+    - -c
+    image: base_registry_address:base_registry_port/busybox
+    imagePullPolicy: Always
+  valueschema:
+    properties:
+      contextpath:
+        default: '/'
+        description: 서비스할 컨텍스트 경로(ex /, /mantech)
+        type: string
+      dockerfileContents:
+        default: |
+          FROM ${wildflyImage}
+          COPY --chown=jboss ${contextpath}.war /opt/jboss/wildfly/standalone/deployments/${contextpath}.war
+        format: textarea
+        type: string
+      wildflyImage:
+        default: base_registry_address:base_registry_port/accordion/wildfly:26-jdk8
+        description: wildfly 이미지
+        enum:
+        - base_registry_address:base_registry_port/accordion/wildfly:26-jdk8
+        - base_registry_address:base_registry_port/accordion/wildfly:26-jdk11
+        type: string
+      warName:
+        default: ""
+        description: Application 이름(war 파일명)
+        type: string
+      workspace:
+        default: "."
+        type: string
+    type: object
+

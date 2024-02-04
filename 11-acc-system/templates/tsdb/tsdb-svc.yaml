@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "4000"
+  labels:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+    release: tsdb
+    role: master
+  name: tsdb
+  namespace: acc-system
+spec:
+  clusterIP: {{ service_ip.stdout }}.1.15
+  ports:
+  - name: postgresql
+    port: 5432
+    protocol: TCP
+    targetPort: postgresql
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+  labels:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+    release: tsdb
+  name: tsdb-config
+  namespace: acc-system
+spec:
+  clusterIP: None
+  ports:
+  - name: patroni
+    port: 8008
+    protocol: TCP
+    targetPort: 8008
+  selector:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "4000"
+  labels:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+    release: tsdb
+    role: replica
+  name: tsdb-replica
+  namespace: acc-system
+spec:
+  ports:
+  - name: postgresql
+    port: 5432
+    protocol: TCP
+    targetPort: postgresql
+  selector:
+    app: tsdb-timescaledb
+    cluster-name: tsdb
+    role: replica
+  sessionAffinity: None
+  type: ClusterIP
+

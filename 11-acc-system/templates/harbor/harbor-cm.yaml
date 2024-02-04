@@ -1,0 +1,464 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-chartmuseum
+  namespace: acc-system
+data:
+  ALLOW_OVERWRITE: "true"
+  AUTH_ANONYMOUS_GET: "false"
+  BASIC_AUTH_USER: chart_controller
+  CACHE: redis
+  CACHE_REDIS_ADDR: harbor-redis:6379
+  CACHE_REDIS_DB: "3"
+  CHART_POST_FORM_FIELD_NAME: chart
+  CONTEXT_PATH: ""
+  DEBUG: "false"
+  DEPTH: "1"
+  DISABLE_API: "false"
+  DISABLE_METRICS: "false"
+  DISABLE_STATEFILES: "false"
+  INDEX_LIMIT: "0"
+  LOG_JSON: "true"
+  MAX_STORAGE_OBJECTS: "0"
+  MAX_UPLOAD_SIZE: "20971520"
+  PORT: "9999"
+  PROV_POST_FORM_FIELD_NAME: prov
+  STORAGE: local
+  STORAGE_LOCAL_ROOTDIR: /chart_storage
+  STORAGE_TIMESTAMP_TOLERANCE: 1s
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-core
+  namespace: acc-system
+data:
+  _REDIS_URL_CORE: redis://harbor-redis:6379/0?idle_timeout_seconds=30
+  _REDIS_URL_REG: redis://harbor-redis:6379/2?idle_timeout_seconds=30
+  CHART_CACHE_DRIVER: redis
+  CHART_REPOSITORY_URL: http://harbor-chartmuseum
+  CONFIG_PATH: /etc/core/app.conf
+  CORE_LOCAL_URL: http://127.0.0.1:8080
+  CORE_URL: http://harbor-core:80
+  DATABASE_TYPE: postgresql
+  EXT_ENDPOINT: https://{{ user_registry_address }}:{{ user_registry_port }}
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  JOBSERVICE_URL: http://harbor-jobservice
+  LOG_LEVEL: info
+  NO_PROXY: harbor-core,harbor-jobservice,harbor-database,harbor-chartmuseum,harbor-notary-server,harbor-notary-signer,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
+  NOTARY_URL: http://harbor-notary-server:4443
+  PERMITTED_REGISTRY_TYPES_FOR_PROXY_CACHE: docker-hub,harbor,azure-acr,aws-ecr,google-gcr,quay
+  PORT: "8080"
+  PORTAL_URL: http://harbor-portal
+  POSTGRESQL_DATABASE: registry
+  POSTGRESQL_HOST: harbor-database
+  POSTGRESQL_MAX_IDLE_CONNS: "50"
+  POSTGRESQL_MAX_OPEN_CONNS: "1000"
+  POSTGRESQL_PORT: "5432"
+  POSTGRESQL_SSLMODE: disable
+  POSTGRESQL_USERNAME: postgres
+  REGISTRY_CONTROLLER_URL: http://harbor-registry:8080
+  REGISTRY_CREDENTIAL_USERNAME: {{ user_registry_id }}
+  REGISTRY_STORAGE_PROVIDER_NAME: filesystem
+  REGISTRY_URL: http://harbor-registry:5000
+  TOKEN_SERVICE_URL: http://harbor-core:80/service/token
+  TRIVY_ADAPTER_URL: http://harbor-trivy:8080
+  WITH_CHARTMUSEUM: "true"
+  WITH_NOTARY: "true"
+  WITH_TRIVY: "true"
+  app.conf: |
+    appname = Harbor
+    runmode = prod
+    enablegzip = true
+
+    [prod]
+    httpport = 8080
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-jobservice
+  namespace: acc-system
+data:
+  config.yml: |
+    #Server listening port
+    protocol: "http"
+    port: 8080
+    worker_pool:
+      workers: 10
+      backend: "redis"
+      redis_pool:
+        redis_url: "redis://harbor-redis:6379/1"
+        namespace: "harbor_job_service_namespace"
+        idle_timeout_second: 3600
+    job_loggers:
+      - name: "FILE"
+        level: INFO
+        settings: # Customized settings of logger
+          base_dir: "/var/log/jobs"
+        sweeper:
+          duration: 14 #days
+          settings: # Customized settings of sweeper
+            work_dir: "/var/log/jobs"
+    #Loggers for the job service
+    loggers:
+      - name: "STD_OUTPUT"
+        level: INFO
+
+---
+apiVersion: v1
+data:
+  CORE_URL: http://harbor-core:80
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  NO_PROXY: harbor-core,harbor-jobservice,harbor-database,harbor-chartmuseum,harbor-notary-server,harbor-notary-signer,harbor-registry,harbor-portal,harbor-trivy,harbor-exporter,127.0.0.1,localhost,.local,.internal
+  REGISTRY_CONTROLLER_URL: http://harbor-registry:8080
+  REGISTRY_CREDENTIAL_USERNAME: {{ user_registry_id }}
+  REGISTRY_URL: http://harbor-registry:5000
+  TOKEN_SERVICE_URL: http://harbor-core:80/service/token
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-jobservice-env
+  namespace: acc-system
+
+---
+apiVersion: v1
+data:
+  nginx.conf: |
+    worker_processes auto;
+    pid /tmp/nginx.pid;
+
+    events {
+      worker_connections 1024;
+      use epoll;
+      multi_accept on;
+    }
+
+    http {
+      client_body_temp_path /tmp/client_body_temp;
+      proxy_temp_path /tmp/proxy_temp;
+      fastcgi_temp_path /tmp/fastcgi_temp;
+      uwsgi_temp_path /tmp/uwsgi_temp;
+      scgi_temp_path /tmp/scgi_temp;
+      tcp_nodelay on;
+
+      # this is necessary for us to be able to disable request buffering in all cases
+      proxy_http_version 1.1;
+
+      upstream core {
+        server "harbor-core:80";
+      }
+
+      upstream portal {
+        server "harbor-portal:80";
+      }
+      upstream notary-server {
+        server harbor-notary-server:4443;
+      }
+
+      log_format timed_combined '[$time_local]:$remote_addr - '
+        '"$request" $status $body_bytes_sent '
+        '"$http_referer" "$http_user_agent" '
+        '$request_time $upstream_response_time $pipe';
+
+      access_log /dev/stdout timed_combined;
+      server {
+        listen 4443 ssl;
+        server_tokens off;
+        # ssl
+        ssl_certificate /etc/nginx/cert/tls.crt;
+        ssl_certificate_key /etc/nginx/cert/tls.key;
+
+        # recommendations from https://raymii.org/s/tutorials/strong_ssl_security_on_nginx.html
+        ssl_protocols tlsv1.1 tlsv1.2;
+        ssl_ciphers '!aNULL:kECDH+AESGCM:ECDH+AESGCM:RSA+AESGCM:kECDH+AES:ECDH+AES:RSA+AES:';
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:ssl:10m;
+
+        # disable any limits to avoid http 413 for large image uploads
+        client_max_body_size 0;
+
+        # required to avoid http 411: see issue #1486 (https://github.com/docker/docker/issues/1486)
+        chunked_transfer_encoding on;
+
+        location /v2/ {
+          proxy_pass http://notary-server/v2/;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+      }
+
+      server {
+        listen 8443 ssl;
+    #    server_name harbordomain.com;
+        server_tokens off;
+        # SSL
+        ssl_certificate /etc/nginx/cert/tls.crt;
+        ssl_certificate_key /etc/nginx/cert/tls.key;
+
+        # Recommendations from https://raymii.org/s/tutorials/Strong_SSL_Security_On_nginx.html
+        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_ciphers '!aNULL:kECDH+AESGCM:ECDH+AESGCM:RSA+AESGCM:kECDH+AES:ECDH+AES:RSA+AES:';
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+
+        # disable any limits to avoid HTTP 413 for large image uploads
+        client_max_body_size 0;
+
+        # required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
+        chunked_transfer_encoding on;
+
+        # Add extra headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubdomains; preload";
+        add_header X-Frame-Options DENY;
+        add_header Content-Security-Policy "frame-ancestors 'none'";
+
+        location / {
+          proxy_pass http://portal/;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_cookie_path / "/; HttpOnly; Secure";
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+        location /api/ {
+          proxy_pass http://core/api/;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_cookie_path / "/; Secure";
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+        location /chartrepo/ {
+          proxy_pass http://core/chartrepo/;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_cookie_path / "/; Secure";
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+        location /c/ {
+          proxy_pass http://core/c/;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_cookie_path / "/; Secure";
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+        location /v1/ {
+          return 404;
+        }
+
+        location /v2/ {
+          proxy_pass http://core/v2/;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+        location /service/ {
+          proxy_pass http://core/service/;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          # When setting up Harbor behind other proxy, such as an Nginx instance, remove the below line if the proxy already has similar settings.
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          proxy_cookie_path / "/; Secure";
+
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+
+      location /service/notifications {
+          return 404;
+        }
+      }
+        server {
+          listen 8080;
+          #server_name harbordomain.com;
+          return 301 https://$host$request_uri;
+      }
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-nginx
+  namespace: acc-system
+
+---
+apiVersion: v1
+data:
+  nginx.conf: |
+    worker_processes auto;
+    pid /tmp/nginx.pid;
+    events {
+        worker_connections  1024;
+    }
+    http {
+        client_body_temp_path /tmp/client_body_temp;
+        proxy_temp_path /tmp/proxy_temp;
+        fastcgi_temp_path /tmp/fastcgi_temp;
+        uwsgi_temp_path /tmp/uwsgi_temp;
+        scgi_temp_path /tmp/scgi_temp;
+        server {
+            listen 8080;
+            server_name  localhost;
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+            include /etc/nginx/mime.types;
+            gzip on;
+            gzip_min_length 1000;
+            gzip_proxied expired no-cache no-store private auth;
+            gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript;
+            location / {
+                try_files $uri $uri/ /index.html;
+            }
+            location = /index.html {
+                add_header Cache-Control "no-store, no-cache, must-revalidate";
+            }
+        }
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-portal
+  namespace: acc-system
+
+---
+apiVersion: v1
+data:
+  config.yml: |
+    version: 0.1
+    log:
+      level: info
+      fields:
+        service: registry
+    storage:
+      filesystem:
+        rootdirectory: /storage
+      cache:
+        layerinfo: redis
+      maintenance:
+        uploadpurging:
+          enabled: false
+      delete:
+        enabled: true
+      redirect:
+        disable: false
+    redis:
+      addr: harbor-redis:6379
+      db: 2
+      readtimeout: 10s
+      writetimeout: 10s
+      dialtimeout: 10s
+    http:
+      addr: :5000
+      relativeurls: false
+      # set via environment variable
+      # secret: placeholder
+      debug:
+        addr: localhost:5001
+    auth:
+      htpasswd:
+        realm: basic-realm
+        path: /etc/registry/passwd
+    validation:
+      disabled: true
+    compatibility:
+      schema1:
+        enabled: true
+  ctl-config.yml: |
+    ---
+    protocol: "http"
+    port: 8080
+    log_level: info
+    registry_config: "/etc/registry/config.yml"
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: harbor
+    release-namespace: acc-system
+  labels:
+    app: harbor
+    release: harbor
+  name: harbor-registry
+  namespace: acc-system

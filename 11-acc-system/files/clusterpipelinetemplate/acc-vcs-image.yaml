@@ -1,0 +1,18 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterPipelineTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: vcs -> image
+  name: acc-vcs-image
+spec:
+  tasks:
+  - name: vcs-get
+    templateRef:
+      clusterScope: true
+      name: acc-vcs-git
+  - depends: vcs-get.Succeeded
+    name: image-build
+    templateRef:
+      clusterScope: true
+      name: acc-image-kaniko

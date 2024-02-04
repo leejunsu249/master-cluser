@@ -1,0 +1,49 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    resource-policy: keep
+    release-name: harbor
+    release-namespace: acc-system
+  finalizers:
+  - kubernetes.io/pvc-protection
+  labels:
+    app: harbor
+    component: chartmuseum
+    release: harbor
+  name: harbor-chartmuseum
+  namespace: acc-system
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ harbor_chartmuseum_storage }}
+  storageClassName: accordion-storage
+  volumeMode: Filesystem
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    resource-policy: keep
+    release-name: harbor
+    release-namespace: acc-system
+  finalizers:
+  - kubernetes.io/pvc-protection
+  labels:
+    app: harbor
+    component: registry
+    release: harbor
+  name: harbor-registry
+  namespace: acc-system
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ harbor_registry_storage }}
+  storageClassName: accordion-storage
+  volumeMode: Filesystem

@@ -1,0 +1,31 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Source Build: ant'
+    cicd.accordions.co.kr/category: build
+  name: acc-src-ant
+spec:
+  container:
+    args:
+    - '{{.values.cmd}}'
+    command:
+    - sh
+    - -c
+    image: '{{.values.antImage}}'
+    imagePullPolicy: Always
+  valueschema:
+    properties:
+      antImage:
+        default: base_registry_address:base_registry_port/accordion/ant:1.14
+        description: ant 이미지
+        enum:
+        - base_registry_address:base_registry_port/accordion/ant:1.14
+        type: string
+      cmd:
+        default: ant -f build.xml
+        description: ant 실행의 커맨드 명령어
+        type: string
+    type: object
+

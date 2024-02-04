@@ -1,0 +1,50 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterPipelineTemplate
+metadata:
+  annotations:
+    accordions.co.kr/description: |
+      - env-render-print 태스크:
+          - 사용가능한 환경변수
+          - {{{.NAME}}} 형식으로 접근 가능
+          - 빌드 시점에서의 랜더링 처리
+      - env-in-container 태스크:
+          - 컨테이너 내부에서의 환경변수를 사용하는 방법
+          - ACC_CICD_ 로 접근
+      - env-render-metadata 태스크:
+          - 빌드의 메타데이터를 사용하는 방법 (separator : ⦀ (\u2980))
+    accordions.co.kr/summary: Showcase env
+  name: acc-showcase-env
+spec:
+  tasks:
+  - name: env-render-print
+    templateRef:
+      clusterScope: true
+      name: acc-shell
+    values:
+      cmd: 'echo "파이프라인 이름: {{{.PIPELINE.NAME}}}"; echo "파이프라인 네임스페이스: {{{.PIPELINE.NAMESPACE}}}";
+        echo "파이프라인 UID: {{{.PIPELINE.UID}}}"; echo "파이프라인의 인스턴스 이름: {{{.PIPELINE.INSTANCE}}}";
+        echo "빌드 이름: {{{.BUILD.NAME}}}"; echo "빌드 버전: {{{.BUILD.VERSION}}}"; echo
+        "빌드 생성자 이름: {{{.BUILD.CREATOR.USERNAME}}}";'
+  - depends: env-render-print.Succeeded
+    name: env-in-container
+    templateRef:
+      clusterScope: true
+      name: acc-shell
+    values:
+      cmd: 'echo "파이프라인 이름: $ACC_CICD_PIPELINE_NAME"; echo "파이프라인 네임스페이스: $ACC_CICD_PIPELINE_NAMESPACE";
+        echo "파이프라인 UID: $ACC_CICD_PIPELINE_UID"; echo "파이프라인의 인스턴스 이름: $ACC_CICD_PIPELINE_INSTANCE";
+        echo "빌드 이름: $ACC_CICD_BUILD_NAME"; echo "빌드 버전: $ACC_CICD_BUILD_VERSION";
+        echo "빌드 생성자 이름: $ACC_CICD_BUILD_CREATOR_USERNAME";'
+  - depends: env-in-container.Succeeded
+    name: env-render-metadata
+    templateRef:
+      clusterScope: true
+      name: acc-shell
+    values:
+      cmd: echo ".PIPELINE.NAME⦀{{{.PIPELINE.NAME}}}" >> /dev/termination-log; echo
+        ".PIPELINE.NAMESPACE⦀{{{.PIPELINE.NAMESPACE}}}" >> /dev/termination-log; echo
+        ".PIPELINE.UID⦀{{{.PIPELINE.UID}}}" >> /dev/termination-log; echo ".PIPELINE.INSTANCE⦀{{{.PIPELINE.INSTANCE}}}"
+        >> /dev/termination-log; echo ".BUILD.NAME⦀{{{.BUILD.NAME}}}" >> /dev/termination-log;
+        echo ".BUILD.VERSION⦀{{{.BUILD.VERSION}}}" >> /dev/termination-log; echo ".BUILD.CREATOR.USERNAME⦀{{{.BUILD.CREATOR.USERNAME}}}"
+        >> /dev/termination-log;

@@ -1,0 +1,32 @@
+###############################################################################
+# clustercatalogtemplate
+###############################################################################
+- name: clustercatalogtemplate addon directory
+  file: path={{ kube_addon_dir }}/acc-system/clustercatalogtemplate state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  copy:
+    src: "clustercatalogtemplate/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/clustercatalogtemplate/{{ item }}"
+  with_items:
+    - acc-tomcat.yaml
+    - acc-wildfly.yaml
+    - acc-from-image.yaml
+    - acc-springboot.yaml
+
+- name : wait_for(10s)
+  wait_for: timeout=10
+  delegate_to: localhost
+  become: no
+
+- name: Deploy clustercatalogtemplate setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/clustercatalogtemplate
+  register: result
+  until: result.rc == 0
+  retries: 30
+  delay: 5
+

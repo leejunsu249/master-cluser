@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scouter-manager
+  labels:
+    app: scouter-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scouter-manager
+subjects:
+- kind: ServiceAccount
+  name: scouter-manager
+  namespace: acc-system

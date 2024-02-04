@@ -1,0 +1,70 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Source Get: git'
+    cicd.accordions.co.kr/category: vcs
+  name: acc-vcs-git
+spec:
+  container:
+    args:
+    - --repo={{.values.repo}}
+    - --clean-workspace={{.values.cleanWorkspace}}
+    - --workspace={{.values.workspace}}
+    - --ref={{.values.ref}}
+    - '{{- if ne .values.auth.type "none"}}--auth-type={{.values.auth.type}}{{- end}}'
+    - '{{- if ne .values.auth.type "none"}}--auth-json-data={{b64enc .values.auth.cred}}{{- end}}'
+    image: base_registry_address:base_registry_port/accordion/cicd-vcs-git:cicd_vcs_git_version
+    imagePullPolicy: Always
+  valueschema:
+    properties:
+      auth:
+        anyOf:
+          - properties:
+              type:
+                enum:
+                  - none
+                type: string
+                x-ui-display: hidden
+            title: none
+          - properties:
+              cred:
+                type: secretData
+                x-kube-type: kubernetes.io/basic-auth
+              type:
+                enum:
+                  - basic
+                type: string
+                x-ui-display: hidden
+            title: basic auth
+          - properties:
+              cred:
+                type: secretData
+                x-kube-type: kubernetes.io/ssh-auth
+              type:
+                enum:
+                  - ssh
+                type: string
+                x-ui-display: hidden
+            title: ssh auth
+        x-ui-order: 3
+      cleanWorkspace:
+        default: true
+        type: boolean
+        x-ui-order: 4
+      ref:
+        default: master
+        description: Git Reference
+        type: string
+        x-ui-order: 2
+      repo:
+        description: Git Repository
+        pattern: '(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$'
+        type: string
+        x-ui-order: 1
+      workspace:
+        default: .
+        type: string
+        x-ui-order: 5
+    type: object

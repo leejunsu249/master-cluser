@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+data:
+  config: |-
+    log:
+      encoder: console
+      level: 0 # (ERROR: -1, INFO: 0, DEBUG: 1, DEBUG Detail : 1 over)
+    controller:
+      webhook:
+        port: 9443
+kind: ConfigMap
+metadata:
+  name: cicd-trigger-manager-config
+  namespace: acc-system

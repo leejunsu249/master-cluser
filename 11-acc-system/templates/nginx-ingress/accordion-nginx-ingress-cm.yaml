@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  allow-snippet-annotations: "true"
+  enable-sticky-sessions: "true"
+  client-max-body-size: "1000m"
+  proxy-body-size: "500m"
+  proxy-send-timeout: "300"
+  proxy-read-timeout: "300"
+  enable-vts-status: "true"
+  keep-alive: "5"
+kind: ConfigMap
+metadata:
+  name: accordion-nginx-ingress-conf
+  namespace: acc-system
+

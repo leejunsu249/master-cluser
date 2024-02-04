@@ -1,0 +1,13 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cicd-template-sync-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cicd-template-sync-manager-role
+subjects:
+- kind: ServiceAccount
+  name: cicd-template-sync-manager
+  namespace: acc-system

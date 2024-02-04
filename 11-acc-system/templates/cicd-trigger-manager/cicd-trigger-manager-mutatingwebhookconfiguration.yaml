@@ -1,0 +1,28 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: cicd-trigger-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlDNmpDQ0FkSUNDUUNpVkJBN1lTbFI4akFOQmdrcWhraUc5dzBCQVFzRkFEQTJNVFF3TWdZRFZRUUREQ3RqDQphV05rTFhSeWFXZG5aWEl0ZDJWaWFHOXZheTF6WlhKMmFXTmxMbUZqWXkxemVYTjBaVzB1YzNaak1DQVhEVEl6DQpNRFV3TXpBeE1UWXdOVm9ZRHpJeU9UY3dNakUxTURFeE5qQTFXakEyTVRRd01nWURWUVFEREN0amFXTmtMWFJ5DQphV2RuWlhJdGQyVmlhRzl2YXkxelpYSjJhV05sTG1Gall5MXplWE4wWlcwdWMzWmpNSUlCSWpBTkJna3Foa2lHDQo5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBMXd4ZmZ0QWZvaWpBVG1HM3hiY1J4VU0yc1JHWXJIUFZvTDNnDQpxY0RZb3JQdU9XdGR2SkRZc3dHK2xIbUx3R2hsMDVPYTJmZUZ6bTNVVVNYMG5ZR1RuOTlZR3ZibXNVREJEakQ0DQo3dGhRVnFxakg0UGtsc2VaTWtYSGZkeDUzOGJEaG1uTThHR0FZOUJIbFhZd213cGZaS0JUMmFTNmVLNm1NekhvDQprK2dmQUhEdFk5VE5KSEtINHRjUUFkYWMrNTB4dEVWaUg4aXl1L0RaejBXSCtzeDhubU8zUDg2MCtESVBDMUkyDQpjVUE5ckZ4cmpGMDFHRU9xdjMvMXNRS0RtTGo5bFF3NXZvR3hkcFpBaWl6ZXhzd3dIdzJpckgxaElnVU1uZkduDQpFN0tNTDM3MUpGTFFabUt2T3d1Y1lVY2wwTWRZZ2ppeDdnYVhpU1ZJTTJJZzE2YzhoUUlEQVFBQk1BMEdDU3FHDQpTSWIzRFFFQkN3VUFBNElCQVFDY29mNFlEaFhzZnpUcS8rWWlEOXJYSUxrWWJpbjhZbWtjSVFRYlZaS1k0QWtPDQp2QUx4ZmVOZ1ZHbHR2cUUvaEQyZmsxQnAveHhvcncxNUptUDJnZlFnanpRWURPUERRVStScTYzZ0REaXFZUmp0DQpOelA4L2dPV0E3SnI5U2RDVW1PejdPUVFqWHFOVDVQTDU0V25semxnSStnL3BsSnJaTWRXdkxMcmt4NEl2aFVHDQpncUFWTURjRzZVUWpIRExlYVRFcFlXVW5QZ2thWjVzVm1HSWxZY2dFTlltM1g3VTFOdFNaTmV6OFJEYVRvSWxjDQpWTlo2TnVucmpSd0h2N1hHRUgvZzFvQlhDSE14YUdqa1YxM1E1VmRoY0lzT2dEdjl4bkVLTGU5U1d5OVhTL1VwDQpDYmpqeEpEV2M3L2p4bmswZGxXQmZud2oxdk01anVwaUZXMGZtWWFnDQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tDQo=
+    service:
+      name: cicd-trigger-webhook-service
+      namespace: acc-system
+      path: /mutate-trigger
+  failurePolicy: Fail
+  name: trigger-hook.accordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - triggers
+  sideEffects: None

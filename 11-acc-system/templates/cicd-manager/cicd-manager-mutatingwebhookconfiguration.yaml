@@ -1,0 +1,135 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: cicd-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-approval
+  failurePolicy: Fail
+  name: approval-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - approvals
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-buildrequest
+  failurePolicy: Fail
+  name: buildrequest-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - buildrequests
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-catalog
+  failurePolicy: Fail
+  name: catalog-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - catalogs
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-catalogtemplate
+  failurePolicy: Fail
+  name: catalogtemplate-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - catalogtemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-clustercatalogtemplate
+  failurePolicy: Fail
+  name: clustercatalogtemplate-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - clustercatalogtemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: cicd-webhook-service
+      namespace: acc-system
+      path: /mutate-pipeline
+  failurePolicy: Fail
+  name: pipeline-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - cicd.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - pipelines
+  sideEffects: None

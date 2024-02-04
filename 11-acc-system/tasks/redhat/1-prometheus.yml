@@ -1,0 +1,164 @@
+---
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+###############################################################################
+# prometheus
+###############################################################################
+- name: prometheus addon directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/setup state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: prometheus sts directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/sts state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: prometheus sts directory
+  file: path={{ kube_addon_dir }}/acc-system/prometheus/files state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+- name: Copy additional-scrape-configs.yaml
+  copy:
+    src: prometheus/additional-scrape-configs.yaml
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/files/additional-scrape-configs.yaml"
+
+- name: Create additional-scrape-configs.yaml
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/prometheus/files
+  register: result
+  until: result.rc == 0
+  retries: 10
+  delay: 5
+
+- name: Create uuid
+  shell: >
+    echo  "{{ 1000 | random | to_uuid | lower }}"
+  register: uuid
+
+- name: print uuid
+  debug: msg="{{ uuid.stdout }}"
+
+- name: Copy Template
+  template:
+    src: "prometheus/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/sts/{{ item }}"
+  with_items:
+    - prometheus-prometheus.yaml
+
+- name: Copy Template
+  template:
+    src: "prometheus/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/{{ item }}"
+  with_items:
+    - alertmanager-alertmanager.yaml
+    - alertmanager-secret.yaml
+    - alertmanager-serviceAccount.yaml
+    - alertmanager-serviceMonitor.yaml
+    - alertmanager-service.yaml
+    - blackboxExporter-clusterRoleBinding.yaml
+    - blackboxExporter-clusterRole.yaml
+    - blackboxExporter-configuration.yaml
+    - blackboxExporter-deployment.yaml
+    - blackboxExporter-serviceAccount.yaml
+    - blackboxExporter-serviceMonitor.yaml
+    - blackboxExporter-service.yaml
+    - kube-state-metrics-clusterRoleBinding.yaml
+    - kube-state-metrics-clusterRole.yaml
+    - kube-state-metrics-deployment.yaml
+    - kube-state-metrics-serviceAccount.yaml
+    - kube-state-metrics-serviceMonitor.yaml
+    - kube-state-metrics-service.yaml
+    - node-exporter-clusterRoleBinding.yaml
+    - node-exporter-clusterRole.yaml
+    - node-exporter-daemonset.yaml
+    - node-exporter-serviceAccount.yaml
+    - node-exporter-serviceMonitor.yaml
+    - node-exporter-service.yaml
+    - prometheus-adapter-apiService.yaml
+    - prometheus-adapter-clusterRoleAggregatedMetricsReader.yaml
+    - prometheus-adapter-clusterRoleBindingDelegator.yaml
+    - prometheus-adapter-clusterRoleBinding.yaml
+    - prometheus-adapter-clusterRoleServerResources.yaml
+    - prometheus-adapter-clusterRole.yaml
+    - prometheus-adapter-configMap.yaml
+    - prometheus-adapter-deployment.yaml
+    - prometheus-adapter-roleBindingAuthReader.yaml
+    - prometheus-adapter-serviceAccount.yaml
+    - prometheus-adapter-serviceMonitor.yaml
+    - prometheus-adapter-service.yaml
+    - prometheus-clusterRoleBinding.yaml
+    - prometheus-clusterRole.yaml
+    - prometheus-operator-serviceMonitor.yaml
+    - prometheus-roleBindingConfig.yaml
+    - prometheus-roleBindingSpecificNamespaces.yaml
+    - prometheus-roleConfig.yaml
+    - prometheus-roleSpecificNamespaces.yaml
+    - prometheus-serviceAccount.yaml
+    - prometheus-serviceMonitorApiserver.yaml
+    - prometheus-serviceMonitorCoreDNS.yaml
+    - prometheus-serviceMonitorKubeControllerManager.yaml
+    - prometheus-serviceMonitorKubelet.yaml
+    - prometheus-serviceMonitorKubeScheduler.yaml
+    - prometheus-serviceMonitor.yaml
+    - prometheus-service.yaml
+    - thanos-sidecar.yaml
+
+- name: Copy Template
+  template:
+    src: "prometheus/setup/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/setup/{{ item }}"
+  with_items:
+    - prometheus-operator-0alertmanagerConfigCustomResourceDefinition.yaml
+    - prometheus-operator-0alertmanagerCustomResourceDefinition.yaml
+    - prometheus-operator-0podmonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0probeCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusruleCustomResourceDefinition.yaml
+    - prometheus-operator-0servicemonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0thanosrulerCustomResourceDefinition.yaml
+    - prometheus-operator-clusterRoleBinding.yaml
+    - prometheus-operator-clusterRole.yaml
+    - prometheus-operator-deployment.yaml
+    - prometheus-operator-serviceAccount.yaml
+    - prometheus-operator-service.yaml
+
+- name: Copy grafana-dashboardDefinitions.yaml
+  copy:
+    src: "prometheus/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/prometheus/{{ item }}"
+  with_items:
+    - grafana-dashboardDefinitions.yaml
+    - prometheus-rules.yaml
+
+- name: Deploy Prometheus setup
+  shell: >
+    kubectl create -f {{ kube_addon_dir }}/acc-system/prometheus/setup/{{ item }}
+  with_items:
+    - prometheus-operator-0alertmanagerConfigCustomResourceDefinition.yaml
+    - prometheus-operator-0alertmanagerCustomResourceDefinition.yaml
+    - prometheus-operator-0podmonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0probeCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusCustomResourceDefinition.yaml
+    - prometheus-operator-0prometheusruleCustomResourceDefinition.yaml
+    - prometheus-operator-0servicemonitorCustomResourceDefinition.yaml
+    - prometheus-operator-0thanosrulerCustomResourceDefinition.yaml
+  ignore_errors: yes
+
+- name: Deploy Prometheus setup
+  shell: >
+    kubectl create -f {{ kube_addon_dir }}/acc-system/prometheus/setup/{{ item }}
+  with_items:
+    - prometheus-operator-clusterRoleBinding.yaml
+    - prometheus-operator-clusterRole.yaml
+    - prometheus-operator-deployment.yaml
+    - prometheus-operator-serviceAccount.yaml
+    - prometheus-operator-service.yaml
+  ignore_errors: yes
+
+- name: Deploy Prometheus
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/prometheus
+  ignore_errors: yes

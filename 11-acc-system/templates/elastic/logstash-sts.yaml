@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    release-name: logstash
+    release-namespace: acc-system
+  labels:
+    app: logstash-logstash
+    release: logstash
+  name: logstash-logstash
+  namespace: acc-system
+spec:
+  podManagementPolicy: Parallel
+{% if logstash_ha == "yes" %}
+  replicas: 2
+{% else %}
+  replicas: 1
+{% endif %}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: logstash-logstash
+      release: logstash
+  serviceName: logstash-logstash-headless
+  template:
+    metadata:
+      annotations:
+        configchecksum: 216fdbe350c3135674d958557c97f403d1cb72da7e4d4117a6bc884932f6455
+        pipelinechecksum: a4fb5252f759c86b459b1751dab513c80e44713d6728a82d3ce6daaa3b75ef0
+      labels:
+        app: logstash-logstash
+        chart: logstash
+        heritage: Helm
+        release: logstash
+      name: logstash-logstash
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+{% if logstash_ha == "yes" %}
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app: logstash-logstash
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+{% endif %}
+      containers:
+      - env:
+        - name: LS_JAVA_OPTS
+          value: -Xmx1g -Xms1g
+        - name: LOG4J_FORMAT_MSG_NO_LOOKUPS
+          value: "true"
+        image: {{ base_registry_address }}:{{ base_registry_port }}/logstash-oss-with-opensearch-output-plugin:7.16.2
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 100
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: logstash
+        ports:
+        - containerPort: 9600
+          name: http
+          protocol: TCP
+        - containerPort: 5044
+          name: beats
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 3
+          timeoutSeconds: 5
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /usr/share/logstash/config/logstash.yml
+          name: logstashconfig
+          subPath: logstash.yml
+        - mountPath: /usr/share/logstash/pipeline/logstash.conf
+          name: logstashpipeline
+          subPath: logstash.conf
+        - name: timezone
+          mountPath: /etc/localtime
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: logstash-logstash-config
+        name: logstashconfig
+      - configMap:
+          defaultMode: 420
+          name: logstash-logstash-pipeline
+        name: logstashpipeline
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+  updateStrategy:
+    type: RollingUpdate

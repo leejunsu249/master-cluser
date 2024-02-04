@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cicd-apiserver
+  name: cicd-apiserver
+  namespace: acc-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cicd-apiserver
+  template:
+    metadata:
+      labels:
+        app: cicd-apiserver
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - command:
+        - /cicd-apiserver
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/cicd-apiserver:{{ cicd_apiserver_version }}'
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+        name: apiserver
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /etc/localtime
+          name: timezone
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      securityContext:
+        runAsUser: 65532
+      serviceAccountName: cicd-apiserver
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - hostPath:
+          path: /etc/localtime
+        name: timezone

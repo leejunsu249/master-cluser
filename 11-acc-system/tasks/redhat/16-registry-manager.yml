@@ -1,0 +1,131 @@
+###############################################################################
+# registry-manager
+###############################################################################
+- name: registry-manager addon directory
+  file: path={{ kube_addon_dir }}/acc-system/registry-manager/cert state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: registry-manager addon directory
+  file: path={{ kube_addon_dir }}/acc-system/registry-manager/base state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+- name: Copy server.conf
+  template:
+    src: "registry-manager/cert/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/registry-manager/cert/{{ item }}"
+  with_items:
+    - tls.conf
+
+- name: Create tls.key
+  shell: >
+    openssl genrsa -out {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.key 2048
+
+- name: Create tls.csr
+  shell: >
+    openssl req -new -key {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.key -subj "/CN=mantech" -out {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.csr -config {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.conf
+
+- name: Create tls.crt
+  shell: >
+    openssl x509 -req -in {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.csr -CA {{ kube_addon_dir }}/clusterinfo/cert/ca.crt -CAkey {{ kube_addon_dir }}/clusterinfo/cert/ca.key -CAcreateserial -out {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.crt -days {{ certificates_duration }} -extensions v3_req -extfile {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.conf
+
+###############################################################################
+- name: Get ca.crt
+  shell: >
+    cat {{ kube_addon_dir }}/clusterinfo/cert/ca.crt
+  register: registry_ca_crt
+
+- name: Base64 registry_ca_crt
+  shell: >
+    echo {{ registry_ca_crt.stdout | b64encode }}
+  register: base64_registry_ca_crt
+
+- name: set var fact
+  set_fact:
+    base_registry_ca_crt: "{{ base64_registry_ca_crt }}"
+
+- name: Get tls.crt
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.crt
+  register: registry_tls_crt
+
+- name: Base64 registry_tls_crt
+  shell: >
+    echo {{ registry_tls_crt.stdout | b64encode }}
+  register: base64_registry_tls_crt
+
+- name: set var fact
+  set_fact:
+    base_registry_tls_crt: "{{ base64_registry_tls_crt }}"
+
+- name: Get tls.key
+  shell: >
+    cat {{ kube_addon_dir }}/acc-system/registry-manager/cert/tls.key
+  register: registry_tls_key
+
+- name: Base64 registry_tls_key
+  shell: >
+    echo {{ registry_tls_key.stdout | b64encode }}
+  register: base64_registry_tls_key
+
+- name: set var fact
+  set_fact:
+    base_registry_tls_key: "{{ base64_registry_tls_key }}"
+
+- name: Get registry_passwd
+  shell: >
+    cat {{ kube_addon_dir }}/registry/passwd
+  register: registry_passwd
+
+- name: Copy files
+  template:
+    src: "registry-manager/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/registry-manager/{{ item }}"
+  with_items:
+    - registry-manager-clusterrolebinding.yaml
+    - registry-manager-clusterrole.yaml
+    - registry-manager-cm.yaml
+    - registry-manager-deploy.yaml
+    - registry-manager-mutatingwebhookconfiguration.yaml
+    - registry-manager-rolebinding.yaml
+    - registry-manager-role.yaml
+    - registry-manager-sa.yaml
+    - registry-manager-secret.yaml
+    - registry-manager-svc.yaml
+
+- name: Copy files
+  template:
+    src: "registry-manager/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/registry-manager/base/{{ item }}"
+  with_items:
+    - registry-manager-base-infra.yaml
+    - registry-manager-base-user.yaml
+
+- name: Deploy registry-manager setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/registry-manager
+
+- name : wait_for(10s)
+  wait_for: timeout=10
+  delegate_to: localhost
+  become: no
+
+- name: Get registry-manager podname
+  shell: >
+    kubectl get po -n acc-system | grep registry-manager | cut -d ' ' -f 1
+  register: registry_manager_podname
+  until: registry_manager_podname.stdout != ""
+  retries: 30
+  delay: 5
+
+- name: registry-manager pod wait_for
+  shell: >
+    kubectl wait --for=condition=ready pod/{{ registry_manager_podname.stdout }} -n acc-system
+  register: result
+  until: result.rc == 0
+  retries: 2000
+  delay: 5
+
+- name: Deploy registry-manager setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/registry-manager/base

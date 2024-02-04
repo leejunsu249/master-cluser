@@ -1,0 +1,27 @@
+type: S3
+config:
+  bucket: "thanos"
+{% if minio_ha == "yes" %}
+  endpoint: "minio-ha.acc-system:9000"
+{% else %}
+  endpoint: "minio.acc-system:9000"
+{% endif %}
+  region: ""
+  access_key: "minio"
+  insecure: true
+  signature_version2: false
+  secret_key: "minio123"
+  put_user_metadata: {}
+  http_config:
+    idle_conn_timeout: 1m30s
+    response_header_timeout: 2m
+    insecure_skip_verify: false
+  trace:
+    enable: false
+  list_objects_version: ""
+  part_size: 134217728
+  sse_config:
+    type: ""
+    kms_key_id: ""
+    kms_encryption_context: {}
+    encryption_key: ""

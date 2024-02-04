@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adapter-config
+  namespace: acc-system
+data:
+  config.yaml: |
+    resourceRules:
+      cpu:
+        containerLabel: container
+        containerQuery: "sum(irate(container_cpu_usage_seconds_total{<<.LabelMatchers>>,container!='POD',container!='',pod!=''}[5m])) by (<<.GroupBy>>)"
+        nodeQuery: "sum(1 - irate(node_cpu_seconds_total{mode='idle'}[5m]) * on(namespace,pod) group_left(node) node_namespace_pod:kube_pod_info:{<<.LabelMatchers>>}) by (<<.GroupBy>>)"
+        resources:
+          overrides:
+            namespace:
+              resource: namespace
+            node:
+              resource: node
+            pod:
+              resource: pod
+      memory:
+        containerLabel: container
+        containerQuery: "sum(container_memory_working_set_bytes{<<.LabelMatchers>>,container!='POD',container!='',pod!=''}) by (<<.GroupBy>>)"
+        nodeQuery: "sum(node_memory_MemTotal_bytes{job='node-exporter',<<.LabelMatchers>>} - node_memory_MemAvailable_bytes{job='node-exporter',<<.LabelMatchers>>}) by (<<.GroupBy>>)"
+        resources:
+          overrides:
+            instance:
+              resource: node
+            namespace:
+              resource: namespace
+            pod:
+              resource: pod
+      window: 5m
+    rules:
+    - name:
+        matches: apm_ActiveService
+      metricsQuery: "apm_ActiveService{}"
+      seriesQuery: "{namespace!='',__name__=~'.*apm_ActiveService$'}"
+      resources:
+        overrides:
+          exported_namespace:
+            resource: namespace
+          exported_pod:
+            resource: pod
+    - name:
+        matches: apm_ElapsedTime
+      metricsQuery: "apm_ElapsedTime{}"
+      seriesQuery: "{namespace!='',__name__=~'.*apm_ElapsedTime$'}"
+      resources:
+        overrides:
+          exported_namespace:
+            resource: namespace
+          exported_pod:
+            resource: pod
+    - name:
+        matches: apm_GcTime
+      metricsQuery: "apm_GcTime{}"
+      seriesQuery: "{namespace!='',__name__=~'.*apm_GcTime$'}"
+      resources:
+        overrides:
+          exported_namespace:
+            resource: namespace
+          exported_pod:
+            resource: pod
+    - name:
+        matches: apm_TPS
+      metricsQuery: "apm_TPS{}"
+      seriesQuery: "{namespace!='',__name__=~'.*apm_TPS$'}"
+      resources:
+        overrides:
+          exported_namespace:
+            resource: namespace
+          exported_pod:
+            resource: pod

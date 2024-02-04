@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    alertmanager: main
+    release: acc
+  name: alertmanager-main
+  namespace: acc-system
+spec:
+  ports:
+  - name: web
+    port: 9093
+    targetPort: web
+  - name: reloader-web
+    port: 8080
+    targetPort: reloader-web
+  selector:
+    alertmanager: main
+    app: alertmanager
+  sessionAffinity: ClientIP

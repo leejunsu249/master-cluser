@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-operator-prometheus-config
+  namespace: acc-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-operator-prometheus-config
+subjects:
+- kind: ServiceAccount
+  name: prometheus-operator-prometheus
+  namespace: acc-system

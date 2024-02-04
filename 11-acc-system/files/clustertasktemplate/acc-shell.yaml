@@ -1,0 +1,24 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Shell: command'
+    cicd.accordions.co.kr/category: normal
+  name: acc-shell
+spec:
+  container:
+    args:
+    - |
+      {{.values.cmd}}
+    command:
+    - sh
+    - -c
+    image: base_registry_address:base_registry_port/busybox
+  valueschema:
+    properties:
+      cmd:
+        description: bash shell command
+        format: shell
+        type: string
+    type: object

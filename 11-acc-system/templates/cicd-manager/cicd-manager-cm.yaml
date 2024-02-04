@@ -1,0 +1,99 @@
+---
+apiVersion: v1
+data:
+  config: |
+    runtimeExecutor: argo
+    controller:
+      webhook:
+        port: 9443
+    log:
+      encoder: console
+      level: 0 # (ERROR: -1, INFO: 0, DEBUG: 1, DEBUG Detail : 1 over)
+      enableLevelColor: false
+      enableCaller: true
+    artifact:
+      artifactContainer:
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/cicd-artifact:{{ cicd_artifact_version }}'
+        imagePullPolicy: Always
+        env:
+          - name: S3_ENDPOINT
+            value: minio.acc-system:9000
+          - name: S3_BUCKET
+            value: pipeline
+          - name: S3_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: s3-cred
+                key: accesskey
+          - name: S3_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: s3-cred
+                key: secretkey
+    approval:
+      approverContainer: # 승인 컨테이너
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/cicd-approver:{{ cicd_approver_version }}'
+        imagePullPolicy: Always
+        args:
+          - --timeout=30
+          - --v=0
+    deploy:
+      infoProvider:
+        endpoint: cicd-webhook-service.acc-system
+        path: deployinfo
+        secure: true
+      deployerContainer: # 배포 컨테이너
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/cicd-deployer:{{ cicd_deployer_version }}'
+        imagePullPolicy: Always
+        args:
+          - --update-apply-gvk-list=core/v1/Service
+          - --v=0
+    s3: # artifact 저장소
+      secretName: s3-cred # accesskey, secretkey
+      bucket: pipeline
+{% if minio_ha == "yes" %}
+      endpoint: minio-ha.acc-system:9000
+{% else %}
+      endpoint: minio.acc-system:9000
+{% endif %}
+      secure: false
+    logo:
+      maxWidth: 100
+      maxHeight: 100
+    argo:
+      buildWorkflowTemplate: # workflow base spec
+        imagePullSecrets:
+          - name: infra-registry
+        podMetadata:
+          labels:
+            sidecar.istio.io/inject: "false"
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - preference:
+                  matchExpressions:
+                    - key: accordion-role
+                      operator: In
+                      values:
+                        - infra
+                weight: 100
+        tolerations:
+          - effect: NoSchedule
+            key: accordion-role
+            operator: Equal
+            value: infra
+      workspaceProvider:
+        pvc:
+          template:
+            spec:
+              storageClassName: accordion-storage
+              volumeMode: Filesystem
+              accessModes:
+                - ReadWriteMany
+              resources:
+                requests:
+                  storage: {{ cicd_manager_storage }}
+kind: ConfigMap
+metadata:
+  name: cicd-manager-config
+  namespace: acc-system

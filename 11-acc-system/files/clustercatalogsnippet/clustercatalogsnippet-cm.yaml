@@ -1,0 +1,37 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterCatalogSnippet
+metadata:
+  annotations:
+    accordions.co.kr/description: https://kubernetes.io/docs/concepts/configuration/configmap
+    accordions.co.kr/summary: Kubernetes ConfigMap
+  name: cm
+spec:
+  resource: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{{.CATALOG.NAME}}}
+    data:
+    {{- range $i, $e := .values.cm.data}}
+      {{$e.key}}: {{$e.value}}
+    {{- end}}
+  valueschema:
+    properties:
+      cm:
+        properties:
+          data:
+            description: 데이터
+            items:
+              properties:
+                key:
+                  maxLength: 253
+                  pattern: ^[-._a-zA-Z0-9]+$
+                  type: string
+                value:
+                  format: textarea
+                  type: string
+              type: object
+            type: array
+        type: object
+    type: object

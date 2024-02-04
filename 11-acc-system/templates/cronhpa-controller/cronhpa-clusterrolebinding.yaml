@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cronhpa-controller
+  labels:
+    app: cronhpa-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cronhpa-controller
+subjects:
+- kind: ServiceAccount
+  name: cronhpa-controller
+  namespace: acc-system
+

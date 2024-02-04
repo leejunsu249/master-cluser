@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-controller
+  namespace: acc-system
+spec:
+  selector:
+    matchLabels:
+      app: workflow-controller
+  template:
+    metadata:
+      labels:
+        app: workflow-controller
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - args: []
+        command:
+        - workflow-controller
+        - --executor-image
+        - '{{ base_registry_address }}:{{ base_registry_port }}/argoexec:v3.4.4'
+        - --loglevel
+        - error
+        env:
+        - name: POD_NAMES
+          value: v1
+        - name: LEADER_ELECTION_IDENTITY
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/workflow-controller:v3.4.4'
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 6060
+          initialDelaySeconds: 90
+          periodSeconds: 60
+          timeoutSeconds: 30
+        name: workflow-controller
+        ports:
+        - containerPort: 9090
+          name: metrics
+        - containerPort: 6060
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+      imagePullSecrets:
+      - name: infra-registry
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: workflow-controller
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: argo
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra

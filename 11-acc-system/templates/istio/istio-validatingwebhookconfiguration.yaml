@@ -1,0 +1,41 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: istio-validator-acc-system
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvRENDQWVTZ0F3SUJBZ0lRRjdrcGxUenNBNFFub1pKQmxWcys0akFOQmdrcWhraUc5dzBCQVFzRkFEQVkKTVJZd0ZBWURWUVFLRXcxamJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJek1ESXdNakF5TlRNMU5sb1hEVE16TURFegpNREF5TlRNMU5sb3dHREVXTUJRR0ExVUVDaE1OWTJ4MWMzUmxjaTVzYjJOaGJEQ0NBU0l3RFFZSktvWklodmNOCkFRRUJCUUFEZ2dFUEFEQ0NBUW9DZ2dFQkFMS3NDbUlDUUNFQys5R3dPbkN3ektKa2t0NnovLzFGK2I2bFZuY0wKV25rTi9mblZ0cDZOMWlVQnBXVWhhYzR6cFpEQVZPamkrb3VpTWVTNkpPcnFweXFZdWhER0hTM2pJSHZ3K0dWTQpUZlY0RXR3K092RUVhVUhhNG9QQzlMaGk2YUhBa2JIQjNzR0RZMlBoSEFETmlzK29aYUUvVjAwelBrNll6LzEzCkRMb1MwYmg1WGlSUS8yZFJBUmFZbVJ6cHhiYlMyd2FXczZDN0dEUHZRZ250R3RMT0lQN091UEtwc2lZYjJ2SVIKRVZUU2J4TmsrQ0x2dksyUDFDT1ZYZlZpTXdFM3Z6VkhDV3Z0emZRTlFoNDl2V2pHbXk3MFQwMlY5dWZ0RjZ5TgpHVlJjclRFTjczbmFtMTVnbWRzZjc1R2xGRU12dXhXK0lDL3lWL011VmVuRllkRUNBd0VBQWFOQ01FQXdEZ1lEClZSMFBBUUgvQkFRREFnSUVNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGUDNhN012RzZPT2sKVHAvNzk4Z0dCOHVtQTBtNE1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQWFuNVAwVG9HMG1LU3FBN0E0WmI4aApyWUFKU0VZVVJGS1JETzBSZHFYWTROSUczQ1JaWDRHK2ZsQ21CT1pMOXVYU1hVd1laMlh2d0Q4WHZGczNvcG1JCk5RZjhOU29LWDlNM0VybmJva0cwUElxQ3cwb3JwOWVId3plRzNYaHIxZ0h1WUYxWnZ3czhjYjRDQnFCTHArVloKOGZMY3cweDBXQUVtNkdsb3g5eW9hTXAxSlh5Y0V4T1FoTzFMWFE5SlVLQ2R1QytMVzdIMjh0Y0lpNHNLSFZMdAovd3RNWlVncDlQQnhLN3RUNTkvS3VrNnRVNklVS3p2bGNRT04zT0VyYU9ZTEhKaWpqNlRYd1lmcWtxQnZ0UFBOCkNjdFdEblNZWGJaWGFXbHVvODJuY0R3d0p6L2FnM3BDOFVqOU1oRHJ5Q0huUnhJZzlUSk1qSUNGVW9wU3B3Z00KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    service:
+      name: istiod
+      namespace: acc-system
+      path: /validate
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: rev.validation.istio.io
+  namespaceSelector: {}
+  objectSelector:
+    matchExpressions:
+    - key: istio.io/rev
+      operator: In
+      values:
+      - default
+  rules:
+  - apiGroups:
+    - security.istio.io
+    - networking.istio.io
+    - telemetry.istio.io
+    - extensions.istio.io
+    apiVersions:
+    - '*'
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - '*'
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10

@@ -1,0 +1,25 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Shell: echo'
+    cicd.accordions.co.kr/category: normal
+  name: acc-shell-echo
+spec:
+  container:
+    args:
+    - |
+      echo -e "{{.values.word}}";
+    command:
+    - sh
+    - -c
+    image: base_registry_address:base_registry_port/busybox
+    imagePullPolicy: Always
+  valueschema:
+    properties:
+      word:
+        default: Hello, Accordion.
+        description: echo 출력 문자
+        type: string
+    type: object

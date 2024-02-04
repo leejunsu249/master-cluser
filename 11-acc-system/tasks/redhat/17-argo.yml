@@ -1,0 +1,32 @@
+###############################################################################
+# argo
+###############################################################################
+- name: argo addon directory
+  file: path={{ kube_addon_dir }}/acc-system/argo state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy files
+  template:
+    src: "argo/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/argo/{{ item }}"
+  with_items:
+    - argo-aggregate-to-admin-clusterrole.yaml
+    - argo-aggregate-to-edit-clusterrole.yaml
+    - argo-aggregate-to-view-clusterrole.yaml
+    - argo-clusterrolebinding.yaml
+    - argo-clusterrole.yaml
+    - argo-rolebinding.yaml
+    - argo-role.yaml
+    - argo-sa.yaml
+    - argo-server-clusterrolebinding.yaml
+    - argo-server-clusterrole.yaml
+    - argo-server-deploy.yaml
+    - argo-server-sa.yaml
+    - argo-server-svc.yaml
+    - workflow-controller-cm.yaml
+    - workflow-controller-deploy.yaml
+    - workflow-controller-priorityclass.yaml
+
+- name: Deploy argo setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/argo

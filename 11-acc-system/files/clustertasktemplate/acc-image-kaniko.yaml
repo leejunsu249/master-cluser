@@ -1,0 +1,90 @@
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/description: |
+      - 내부적으로 Kaniko를 이용한 컨테이너 이미지를 빌드한다.
+      - '--cicd-image-name', '--cicd-image-tag'옵션을 통해서 메인 '--destination'이 만들어진다.
+          - image이름 패턴: {dockerconfgjson.server}/{dockerconfigjson.username}/{cicd-image-name}:{cicd-image-tag}
+      - '--digest-file' 옵션은 무시된다.
+    accordions.co.kr/summary: 'Image Build: kaniko'
+    cicd.accordions.co.kr/category: image
+  name: acc-image-kaniko
+spec:
+  container:
+    args:
+      - |
+        cicd-image-kaniko \
+          --cicd-image-name={{.values.imageName}} \
+          --cicd-image-tag={{.values.imageTag}} \
+          {{- range .values.additionalCreds}}
+          --cicd-dockerconfigjson-data={{b64enc .}} \
+          {{- end}}
+          {{- range $i, $s := .values.buildArgs}}
+          --build-arg {{$s.key}}={{$s.value}} \
+          {{- end}}
+          --dockerfile={{.values.dockerfile}} \
+          --compressed-caching=false \
+          --skip-tls-verify \
+          --insecure \
+          --cache={{.values.cache | toString}} \
+          --context dir:///workspace/{{.values.workspace}}
+    command:
+    - sh
+    - -c
+    env:
+    - name: DOCKER_CONFIG_JSON
+      valueFrom:
+        secretKeyRef:
+          key: .dockerconfigjson
+          name: '{{.values.regcred}}'
+    image: base_registry_address:base_registry_port/accordion/cicd-image-kaniko:cicd_image_kaniko_version
+    imagePullPolicy: Always
+    securityContext:
+      runAsUser: 0
+  valueschema:
+    type: object
+    properties:
+      cache:
+        default: true
+        description: 캐쉬사용
+        type: boolean
+      dockerfile:
+        default: Dockerfile
+        description: 도커파일
+        type: string
+      imageName:
+        default: '{{{.PIPELINE.INSTANCE}}}'
+        description: 이미지 이름
+        type: string
+      imageTag:
+        default: '{{{.BUILD.VERSION}}}'
+        description: 이미지 태그
+        type: string
+      regcred:
+        default: '{{{.IMAGE.REGISTRYNAME}}}'
+        description: 푸시 레지스트리 (필수)
+        type: secretName
+        x-kube-type: kubernetes.io/dockerconfigjson
+      additionalCreds:
+        type: array
+        description: regcred 외 이미지 빌드에 사용할 레지스트리 (옵션)
+        items:
+          type: secretData
+          x-kube-key: .dockerconfigjson
+          x-kube-type: kubernetes.io/dockerconfigjson
+      buildArgs:
+        type: array
+        items:
+          type: object
+          properties:
+            key:
+              type: string
+            value:
+              default: ""
+              type: string
+      workspace:
+        default: .
+        description: 작업 디렉토리
+        type: string
+

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus
+  name: prometheus-operator-prometheus
+  namespace: acc-system
+spec:
+  clusterIP: {{ service_ip.stdout }}.1.16
+  ports:
+  - name: web
+    port: 9090
+    targetPort: web
+  - name: reloader-web
+    port: 8080
+    targetPort: reloader-web
+  #type: NodePort
+  selector:
+    app: prometheus
+  sessionAffinity: ClientIP

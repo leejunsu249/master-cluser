@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: storage.k8s.io/v1
+  kind: StorageClass
+  metadata:
+    name: accordion-storage
+    labels:
+      accordions.co.kr/kind: system
+      accordions.co.kr/display: hidden
+  provisioner: accordion-data-provisioner
+  parameters:
+    archiveOnDelete: "false"
+  mountOptions:
+{% if nfs_version == "v3" %}
+    - nfsvers=3,nolock
+{% else %}
+    - nfsvers=4
+{% endif %}
+  reclaimPolicy: Retain
+  volumeBindingMode: WaitForFirstConsumer
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: accordion-data-provisioner
+    namespace: acc-system
+    labels:
+      accordions.co.kr/kind: system
+      accordions.co.kr/display: hidden
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: accordion-data-provisioner
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: accordion-data-provisioner
+          accordions.co.kr/kind: system
+          accordions.co.kr/display: hidden
+      spec:
+        imagePullSecrets:
+        - name: infra-registry
+        serviceAccountName: nfs-client-provisioner
+        containers:
+        - name: nfs-client-provisioner
+          image: {{ base_registry_address }}:{{ base_registry_port }}/nfs-subdir-external-provisioner:v4.0.2
+          imagePullPolicy: Always 
+          env:
+          - name: PROVISIONER_NAME
+            value: accordion-data-provisioner
+          - name: NFS_SERVER
+            value: {{ nfs_server_ip }}
+          - name: NFS_PATH
+{% if cluster_name is undefined %}
+            value: {{ accordion_nfs_path }}/host-cluster
+{% else %}
+            value: {{ accordion_nfs_path }}/{{ cluster_name }}
+{% endif %}
+          volumeMounts:
+          - name: nfs-client-root
+            mountPath: /persistentvolumes
+        nodeSelector:
+          node-role.kubernetes.io/control-plane: ""
+        restartPolicy: Always
+        tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+        volumes:
+        - name: nfs-client-root
+          nfs:
+            server: {{ nfs_server_ip }}
+{% if cluster_name is undefined %}
+            path: {{ accordion_nfs_path }}/host-cluster
+{% else %}
+            path: {{ accordion_nfs_path }}/{{ cluster_name }}
+{% endif %}

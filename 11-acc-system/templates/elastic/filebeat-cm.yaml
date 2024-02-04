@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    release-name: filebeat
+    release-namespace: acc-system
+  labels:
+    app: filebeat-filebeat
+    release: filebeat
+  name: filebeat-filebeat-config
+  namespace: acc-system
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: log
+      paths:
+        - /var/log/audit.log
+      fields_under_root: true
+      fields:
+        service: audit
+      exclude_lines: (impersonatedUser":{"username":"accordion:system?)
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          namespace: kube-system
+          templates:
+            - config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*${data.kubernetes.container.id}.log
+        - type: kubernetes
+          node: ${NODE_NAME}
+          templates:
+            - config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*${data.kubernetes.container.id}.log
+                  include_lines: ['(\[error\])|(\[crit\])']
+              condition:
+                equals:
+                  kubernetes.labels.app_kubernetes_io/part-of: "ingress-nginx"
+    output.logstash:
+      hosts: ["logstash-logstash.acc-system:5044"]

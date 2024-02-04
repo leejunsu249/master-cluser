@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: cluster-local-gateway
+    install.operator.istio.io/owning-resource: unknown
+    istio: cluster-local-gateway
+    istio.io/rev: default
+    operator.istio.io/component: IngressGateways
+    release: istio
+  name: cluster-local-gateway-service-account
+  namespace: istio-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: istio-ingressgateway
+    install.operator.istio.io/owning-resource: unknown
+    istio: ingressgateway
+    istio.io/rev: default
+    operator.istio.io/component: IngressGateways
+    release: istio
+  name: istio-ingressgateway-service-account
+  namespace: istio-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: istio-reader
+    release: istio
+  name: istio-reader-service-account
+  namespace: istio-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: istiod
+    release: istio
+  name: istiod
+  namespace: istio-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: istiod
+    release: istio
+  name: istiod-service-account
+  namespace: istio-system

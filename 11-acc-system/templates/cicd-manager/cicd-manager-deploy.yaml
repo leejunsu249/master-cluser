@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cicd-manager
+  name: cicd-manager
+  namespace: acc-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cicd-manager
+  template:
+    metadata:
+      labels:
+        app: cicd-manager
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - command:
+        - /cicd-manager
+        image: '{{ base_registry_address }}:{{ base_registry_port }}/cicd-manager:{{ cicd_manager_version }}'
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /etc/localtime
+          name: timezone
+          readOnly: true
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      securityContext:
+        runAsUser: 65532
+      serviceAccountName: cicd-manager
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - hostPath:
+          path: /etc/localtime
+        name: timezone
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: cicd-webhook-server-cert

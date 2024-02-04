@@ -1,0 +1,31 @@
+---
+###############################################################################
+# registry
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: registry addon directory
+  file: path={{ kube_addon_dir }}/acc-system/event-exporter state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "event-exporter/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/event-exporter/{{ item }}"
+  with_items:
+    - event-exporter-clusterrolebinding.yaml
+    - event-exporter-clusterrole.yaml
+    - event-exporter-cm.yaml
+    - event-exporter-deploy.yaml
+    - event-exporter-sa.yaml
+
+- name: Deploy event-exporter setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/event-exporter
+  register: result
+  until: result.rc == 0
+  retries: 10
+  delay: 5

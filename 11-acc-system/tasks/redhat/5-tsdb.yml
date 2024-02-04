@@ -1,0 +1,37 @@
+---
+###############################################################################
+# tsdb
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: tsdb addon directory
+  file: path={{ kube_addon_dir }}/acc-system/tsdb state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Create tsdb Secret
+  shell: > 
+    openssl req -x509 -newkey rsa:4096 -keyout "{{ kube_addon_dir }}/acc-system/tsdb/tls.key" -out "{{ kube_addon_dir }}/acc-system/tsdb/tls.crt" -days {{ certificates_duration }} -nodes -subj "/CN=acc-system"
+  
+- name: create Secret
+  shell: >
+    kubectl create secret tls tsdb-certificate --cert={{ kube_addon_dir }}/acc-system/tsdb/tls.crt --key={{ kube_addon_dir }}/acc-system/tsdb/tls.key -n acc-system
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "tsdb/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/tsdb/{{ item }}"
+  with_items:
+    - tsdb-cm.yaml
+    - tsdb-credentials.yaml
+    - tsdb-pgbackrest.yaml
+    - tsdb-rbac.yaml
+    - tsdb-sts.yaml
+    - tsdb-svc.yaml
+
+- name: Deploy tsdb setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/tsdb

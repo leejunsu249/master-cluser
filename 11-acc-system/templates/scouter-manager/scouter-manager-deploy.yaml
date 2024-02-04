@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scouter-manager
+  namespace: acc-system
+  labels:
+    app: scouter-manager
+spec:
+  selector:
+    matchLabels:
+      app: scouter-manager
+  template:
+    metadata:
+      labels:
+        app: scouter-manager
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - name: manager
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/scouter-manager:{{ scouter_manager_version }}"
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: certs
+          mountPath: /certs
+          readOnly: true
+        - name: files
+          mountPath: /files
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      serviceAccountName: scouter-manager
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - name: certs
+        secret:
+          secretName: scouter-manager
+      - name: files
+        configMap:
+          name: scouter-manager

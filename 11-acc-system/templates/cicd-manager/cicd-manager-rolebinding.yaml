@@ -1,0 +1,14 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cicd-leader-election-rolebinding
+  namespace: acc-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cicd-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: cicd-manager
+  namespace: acc-system

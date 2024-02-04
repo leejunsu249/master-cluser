@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: acc-system
+  name: kube-event-exporter
+  labels:
+    app: kube-event-exporter

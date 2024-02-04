@@ -1,0 +1,57 @@
+###############################################################################
+# clustertasktemplate
+###############################################################################
+- name: clustertasktemplate addon directory
+  file: path={{ kube_addon_dir }}/acc-system/clustertasktemplate state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+###############################################################################
+
+- name: Copy files
+  copy:
+    src: "clustertasktemplate/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/clustertasktemplate/{{ item }}"
+  with_items:
+    - acc-dockerfile-springboot.yaml
+    - acc-dockerfile-tomcat.yaml
+    - acc-dockerfile-wildfly.yaml
+    - acc-image-kaniko.yaml
+    - acc-shell-checkfile.yaml
+    - acc-shell-echo.yaml
+    - acc-shell.yaml
+    - acc-src-ant.yaml
+    - acc-src-gradle.yaml
+    - acc-src-mvn.yaml
+    - acc-vcs-git.yaml
+    - acc-vcs-svn.yaml
+
+- name: Replace yaml
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp1 }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-dockerfile-springboot.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-dockerfile-tomcat.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-dockerfile-wildfly.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-image-kaniko.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-shell-checkfile.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-shell-echo.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-shell.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-src-ant.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-src-gradle.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-src-mvn.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-vcs-git.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-vcs-svn.yaml', regexp1: 'base_registry_address:base_registry_port', replace: '{{ base_registry_address }}:{{ base_registry_port }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-image-kaniko.yaml', regexp1: 'cicd_image_kaniko_version', replace: '{{ cicd_image_kaniko_version }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-vcs-git.yaml', regexp1: 'cicd_vcs_git_version', replace: '{{ cicd_vcs_git_version }}' }
+    - { path: '{{ kube_addon_dir }}/acc-system/clustertasktemplate/acc-vcs-svn.yaml', regexp1: 'cicd_vcs_svn_version', replace: '{{ cicd_vcs_svn_version }}' }
+
+- name: Deploy clustertasktemplate setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/clustertasktemplate
+  register: result
+  until: result.rc == 0
+  retries: 3
+  delay: 5
+

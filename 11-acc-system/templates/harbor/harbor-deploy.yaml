@@ -1,0 +1,965 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: chartmuseum
+    release: harbor
+  name: harbor-chartmuseum
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: chartmuseum
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: chartmuseum
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: BASIC_AUTH_PASS
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: harbor-core
+        - name: AWS_SDK_LOAD_CONFIG
+          value: "1"
+        envFrom:
+        - configMapRef:
+            name: harbor-chartmuseum
+        - secretRef:
+            name: harbor-chartmuseum
+        image: {{ base_registry_address }}:{{ base_registry_port }}/chartmuseum-photon:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 9999
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: chartmuseum
+        ports:
+        - containerPort: 9999
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 9999
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /chart_storage
+          name: chartmuseum-data
+          subPath: harbor
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: chartmuseum-data
+        persistentVolumeClaim:
+          claimName: harbor-chartmuseum
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: portal
+    release: harbor
+  name: harbor-portal
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: portal
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: portal
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-portal:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: portal
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: portal-config
+          subPath: nginx.conf
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: harbor-portal
+        name: portal-config
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: registry
+    release: harbor
+  name: harbor-registry
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: registry
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: registry
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - serve
+        - /etc/registry/config.yml
+        envFrom:
+        - secretRef:
+            name: harbor-registry
+        image: {{ base_registry_address }}:{{ base_registry_port }}/registry-photon:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: registry
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+        - containerPort: 5001
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /storage
+          name: registry-data
+          subPath: harbor
+        - mountPath: /etc/registry/passwd
+          name: registry-htpasswd
+          subPath: passwd
+        - mountPath: /etc/registry/config.yml
+          name: registry-config
+          subPath: config.yml
+      - env:
+        - name: CORE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: harbor-core
+        - name: JOBSERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: JOBSERVICE_SECRET
+              name: harbor-jobservice
+        envFrom:
+        - secretRef:
+            name: harbor-registry
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-registryctl:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: registryctl
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /storage
+          name: registry-data
+          subPath: harbor
+        - mountPath: /etc/registry/config.yml
+          name: registry-config
+          subPath: config.yml
+        - mountPath: /etc/registryctl/config.yml
+          name: registry-config
+          subPath: ctl-config.yml
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: registry-htpasswd
+        secret:
+          defaultMode: 420
+          items:
+          - key: REGISTRY_HTPASSWD
+            path: passwd
+          secretName: harbor-registry
+      - configMap:
+          defaultMode: 420
+          name: harbor-registry
+        name: registry-config
+      - name: registry-data
+        persistentVolumeClaim:
+          claimName: harbor-registry
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: notary-signer
+    release: harbor
+  name: harbor-notary-signer
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: notary-signer
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: notary-signer
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: MIGRATIONS_PATH
+          value: migrations/signer/postgresql
+        - name: DB_URL
+          value: postgres://postgres:changeit@harbor-database:5432/notarysigner?sslmode=disable
+        - name: NOTARY_SIGNER_DEFAULTALIAS
+          value: defaultalias
+        image: {{ base_registry_address }}:{{ base_registry_port }}/notary-signer-photon:v2.7.1
+        imagePullPolicy: Always
+        name: notary-signer
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/notary/signer-config.postgres.json
+          name: config
+          subPath: signer.json
+        - mountPath: /etc/ssl/notary/tls.crt
+          name: signer-certificate
+          subPath: tls.crt
+        - mountPath: /etc/ssl/notary/tls.key
+          name: signer-certificate
+          subPath: tls.key
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config
+        secret:
+          defaultMode: 420
+          secretName: harbor-notary-server
+      - name: signer-certificate
+        secret:
+          defaultMode: 420
+          secretName: harbor-notary-server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: notary-server
+    release: harbor
+  name: harbor-notary-server
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: notary-server
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: notary-server
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: MIGRATIONS_PATH
+          value: migrations/server/postgresql
+        - name: DB_URL
+          value: postgres://postgres:changeit@harbor-database:5432/notaryserver?sslmode=disable
+        image: {{ base_registry_address }}:{{ base_registry_port }}/notary-server-photon:v2.7.1
+        imagePullPolicy: Always
+        name: notary-server
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/notary/server-config.postgres.json
+          name: config
+          subPath: server.json
+        - mountPath: /root.crt
+          name: token-service-certificate
+          subPath: tls.crt
+        - mountPath: /etc/ssl/notary/ca.crt
+          name: signer-certificate
+          subPath: ca.crt
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config
+        secret:
+          defaultMode: 420
+          secretName: harbor-notary-server
+      - name: token-service-certificate
+        secret:
+          defaultMode: 420
+          secretName: harbor-core
+      - name: signer-certificate
+        secret:
+          defaultMode: 420
+          secretName: harbor-notary-server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: nginx
+    release: harbor
+  name: harbor-nginx
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: nginx
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: nginx
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      containers:
+      - image: {{ base_registry_address }}:{{ base_registry_port }}/nginx-photon:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: nginx
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
+        - containerPort: 4443
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: config
+          subPath: nginx.conf
+        - mountPath: /etc/nginx/cert
+          name: certificate
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: harbor-nginx
+        name: config
+      - name: certificate
+        secret:
+          defaultMode: 420
+          secretName: harbor-nginx
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: jobservice
+    release: harbor
+  name: harbor-jobservice
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: jobservice
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: jobservice
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: CORE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: harbor-core
+        envFrom:
+        - configMapRef:
+            name: harbor-jobservice-env
+        - secretRef:
+            name: harbor-jobservice
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-jobservice:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/stats
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: jobservice
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/stats
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/jobservice/config.yml
+          name: jobservice-config
+          subPath: config.yml
+        - mountPath: /var/log/jobs
+          name: job-logs
+          subPath: harbor
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: harbor-jobservice
+        name: jobservice-config
+      - emptyDir: {}
+        name: job-logs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    release-name: harbor
+    release-namespace: acc-system
+  generation: 1
+  labels:
+    app: harbor
+    component: core
+    release: harbor
+  name: harbor-core
+  namespace: acc-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: harbor
+      component: core
+      release: harbor
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: harbor
+        component: core
+        release: harbor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: CORE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: harbor-core
+        - name: JOBSERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: JOBSERVICE_SECRET
+              name: harbor-jobservice
+        envFrom:
+        - configMapRef:
+            name: harbor-core
+        - secretRef:
+            name: harbor-core
+        image: {{ base_registry_address }}:{{ base_registry_port }}/harbor-core:v2.7.1
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: core
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        startupProbe:
+          failureThreshold: 360
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/core/app.conf
+          name: config
+          subPath: app.conf
+        - mountPath: /etc/core/key
+          name: secret-key
+          subPath: key
+        - mountPath: /etc/core/private_key.pem
+          name: token-service-private-key
+          subPath: tls.key
+        - mountPath: /etc/core/ca
+          name: ca-download
+        - mountPath: /etc/core/token
+          name: psc
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: app.conf
+            path: app.conf
+          name: harbor-core
+        name: config
+      - name: secret-key
+        secret:
+          defaultMode: 420
+          items:
+          - key: secretKey
+            path: key
+          secretName: harbor-core
+      - name: token-service-private-key
+        secret:
+          defaultMode: 420
+          secretName: harbor-core
+      - name: ca-download
+        secret:
+          defaultMode: 420
+          secretName: harbor-nginx
+      - emptyDir: {}
+        name: psc
+

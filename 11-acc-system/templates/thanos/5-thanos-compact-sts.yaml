@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: thanos-compactor
+  namespace: acc-system
+  labels:
+    app: thanos-compactor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-compactor
+  serviceName: thanos-compactor
+  template:
+    metadata:
+      labels:
+        app: thanos-compactor
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      containers:
+      - name: thanos
+        image: {{ base_registry_address }}:{{ base_registry_port }}/thanos:v0.30.2
+        args:
+          - "compact"
+          - "--log.level=info"
+          - "--data-dir=/data"
+          - "--objstore.config=$(OBJSTORE_CONFIG)"
+          - "--retention.resolution-raw=30d"
+          - "--retention.resolution-5m=30d"
+          - "--retention.resolution-1h=30d"
+          - "--consistency-delay=30m"
+          - "--log.format=json"
+          - "--delete-delay=0"
+          - "--wait"
+        env:
+        - name: OBJSTORE_CONFIG
+          valueFrom:
+            secretKeyRef:
+              key: thanos-objectc-cofnig.yaml
+              name: thanos-objstore-config            
+        ports:
+          - name: http
+            containerPort: 10902
+        livenessProbe:
+          httpGet:
+            port: 10902
+            path: /-/healthy
+        readinessProbe:
+          httpGet:
+            port: 10902
+            path: /-/ready
+        volumeMounts:
+          - name: thanos-objstore-config
+            mountPath: /etc/secret
+            readOnly: false
+      volumes:
+        - name: thanos-objstore-config
+          secret:
+            secretName: thanos-objstore-config

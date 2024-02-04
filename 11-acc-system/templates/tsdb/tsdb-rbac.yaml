@@ -1,0 +1,86 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+  labels:
+    app: tsdb-timescaledb
+    release: tsdb
+  name: tsdb-timescaledb
+  namespace: acc-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - endpoints/restricted
+  verbs:
+  - create
+  - get
+  - patch
+  - update
+  - list
+  - watch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+  labels:
+    app: tsdb-timescaledb
+    release: tsdb
+  name: tsdb-timescaledb
+  namespace: acc-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    release-name: tsdb
+    release-namespace: acc-system
+  labels:
+    app: tsdb-timescaledb
+    release: tsdb
+  name: tsdb-timescaledb
+  namespace: acc-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tsdb-timescaledb
+subjects:
+- kind: ServiceAccount
+  name: tsdb-timescaledb

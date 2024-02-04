@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alert-server
+  namespace: acc-system
+  labels:
+    app: alert-server

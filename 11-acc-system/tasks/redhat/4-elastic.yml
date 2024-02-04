@@ -1,0 +1,33 @@
+---
+###############################################################################
+# elastic
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: elastic addon directory
+  file: path={{ kube_addon_dir }}/acc-system/elastic state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "elastic/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/elastic/{{ item }}"
+  with_items:
+    - filebeat-cm.yaml
+    - filebeat-ds.yaml
+    - filebeat-rbac.yaml
+    - filebeat-sa.yaml
+    - logstash-cm.yaml
+    - logstash-sts.yaml
+    - logstash-svc.yaml
+    - opensearch-sts.yaml
+    - opensearch-svc.yaml
+    - opensearch-cm.yaml
+    - poddisruptionbudget.yaml
+
+- name: Deploy elastic setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/elastic

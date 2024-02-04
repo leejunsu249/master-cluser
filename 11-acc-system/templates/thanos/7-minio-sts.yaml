@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: acc-system
+spec:
+{% if minio_ha == "yes" %}
+  replicas: 4
+  podManagementPolicy: Parallel
+{% endif %}
+  selector:
+    matchLabels:
+{% if minio_ha == "yes" %}
+      app: minio-ha
+{% else %}
+      app: minio
+{% endif %}
+  updateStrategy:
+    type: RollingUpdate
+{% if minio_ha == "yes" %}
+  serviceName: minio-ha
+{% else %}
+  serviceName: minio
+{% endif %}
+  template:
+    metadata:
+      labels:
+{% if minio_ha == "yes" %}
+        app: minio-ha
+{% else %}
+        app: minio
+{% endif %}
+    spec:
+      imagePullSecrets:
+      - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+{% if minio_ha == "yes" %}
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app: minio-ha
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+{% endif %}
+{% if minio_ha == "no" %}
+      initContainers:
+      - name: dir
+        image: {{ base_registry_address }}:{{ base_registry_port }}/busybox
+        volumeMounts:
+        - name: data
+          mountPath: "/thanos"
+          subPath: thanos
+        - name: data
+          mountPath: "/pipeline"
+          subPath: pipeline
+{% endif %}
+      containers:
+      - name: minio
+        image: {{ base_registry_address }}:{{ base_registry_port }}/minio:RELEASE.2021-03-17T02-33-02Z
+        args:
+        - server
+{% if minio_ha == "yes" %}
+        - http://minio-{0...3}.minio-ha.acc-system.svc.cluster.local/data
+{% else %}
+        - /data
+{% endif %}
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "minio"
+        - name: MINIO_SECRET_KEY
+          value: "minio123"
+        ports:
+        - containerPort: 9000
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 120
+          periodSeconds: 20
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 120
+          periodSeconds: 20
+        volumeMounts:
+{% if minio_ha == "yes" %}
+        - name: data-ha
+{% else %}
+        - name: data
+{% endif %}
+          mountPath: "/data"
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      labels:
+{% if minio_ha == "yes" %}
+        app: minio-ha
+      name: data-ha
+{% else %}
+        app: minio
+      name: data
+{% endif %}
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ minio_storage }}
+      storageClassName: accordion-storage
+      volumeMode: Filesystem
+

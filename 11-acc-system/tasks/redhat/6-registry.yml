@@ -1,0 +1,38 @@
+---
+###############################################################################
+# registry
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: registry addon directory
+  file: path={{ kube_addon_dir }}/acc-system/registry state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template
+  template:
+    src: "registry/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-system/registry/{{ item }}"
+  with_items:
+    - registry-pvc.yaml
+    - registry-svc.yaml
+
+- name: Copy registry-deploy.yaml
+  template:
+    src: registry/registry-deploy.yaml
+    dest: "{{ kube_addon_dir }}/acc-system/registry/registry-deploy.yaml"
+  when:
+    - htpasswd_option == "no"
+
+- name: Copy registry-deploy-auth.yaml
+  template:
+    src: registry/registry-deploy-auth.yaml
+    dest: "{{ kube_addon_dir }}/acc-system/registry/registry-deploy.yaml"
+  when:
+    - htpasswd_option == "yes"
+
+- name: Deploy registry setup
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-system/registry

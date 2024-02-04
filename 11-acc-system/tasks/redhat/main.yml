@@ -1,0 +1,119 @@
+---
+- name: Create provisioner
+  include_tasks: 0-provisioner.yml
+
+- name: Create prometheus
+  include_tasks: 1-prometheus.yml
+  when:
+    - external_prometheus != "yes"
+    - prometheus_install == "yes"
+
+- name: Create prometheus crd
+  include_tasks: 1-prometheus-crd.yml
+  when:
+    - prometheus_install != "yes"
+
+- name: Create prometheus (external)
+  include_tasks: 1-prometheus-external.yml
+  when:
+    - external_prometheus == "yes"
+    - prometheus_install == "yes"
+
+- name: Create metrics-server
+  include_tasks: 2-metrics-server.yml
+
+- name: Create nginx-ingress
+  include_tasks: 3-nginx-ingress.yml
+
+- name: Create elastic
+  include_tasks: 4-elastic.yml
+  when:
+    - opensearch_install == "yes"
+
+- name: Create tsdb
+  include_tasks: 5-tsdb.yml
+
+- name: Create registry
+  include_tasks: 6-registry.yml
+  when:
+    - user_registry_external == "no"
+    - user_registry_option == "registry"
+
+- name: Create event-exporter
+  include_tasks: 7-event-exporter.yml
+
+- name: Create Harbor
+  include_tasks: 8-harbor.yml
+  when:
+    - user_registry_external == "no"
+    - user_registry_option == "harbor"
+    - harbor_ha != "yes"
+
+- name: Create Harbor-ha
+  include_tasks: 8-harbor-ha.yml
+  when:
+    - user_registry_external == "no"
+    - user_registry_option == "harbor"
+    - harbor_ha == "yes"
+
+- name: Create thanos
+  include_tasks: 9-thanos.yml
+
+- name: Create istio
+  include_tasks: 10-istio.yml
+  when:
+    - istio_install == "yes"
+    - istio_option == "default"
+
+- name: Create istio-kubeflow
+  include_tasks: 10-istio-kubeflow.yml
+  when:
+    - istio_install == "yes"
+    - istio_option == "kubeflow"
+
+- name: Create cronhpa-controller
+  include_tasks: 11-cronhpa-controller.yml
+
+- name: Create alert-server
+  include_tasks: 12-alert-server.yml
+
+- name: Create scouter-manager
+  include_tasks: 13-scouter-manager.yml
+
+- name: Create xlog-apiserver
+  include_tasks: 15-xlog-apiserver.yml
+
+- name: Create registry-manager
+  include_tasks: 16-registry-manager.yml
+
+- name: Create argo
+  include_tasks: 17-argo.yml
+
+- name: Create cicd-manager
+  include_tasks: 18-cicd-manager.yml
+
+- name: Create clustertasktemplate
+  include_tasks: 19-clustertasktemplate.yml
+
+- name: Create clusterpipelinetemplate
+  include_tasks: 20-clusterpipelinetemplate.yml
+
+- name: Create clustercatalogtemplate
+  include_tasks: 21-clustercatalogtemplate.yml
+
+- name: Create clustercatalogsnippet
+  include_tasks: 22-clustercatalogsnippet.yml
+
+- name: Create cicd-apiserver
+  include_tasks: 23-cicd-apiserver.yml
+
+- name: Create cicd-template-sync-manager
+  include_tasks: 24-cicd-template-sync-manager.yml
+
+- name: Create cicd-trigger-manager
+  include_tasks: 25-cicd-trigger-manager.yml
+
+- name: Create metallb
+  include_tasks: addon-metallb.yml
+  when:
+    metallb_install == "yes"

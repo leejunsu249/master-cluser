@@ -1,0 +1,29 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: registry-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    caBundle: {{ base_registry_ca_crt.stdout }}
+    service:
+      name: registry-webhook-service
+      namespace: acc-system
+      path: /mutate-registry
+  failurePolicy: Fail
+  name: registry-hook.acccordions.co.kr
+  rules:
+  - apiGroups:
+    - management.accordions.co.kr
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - registries
+  sideEffects: None
+

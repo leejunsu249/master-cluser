@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+  config: |
+    kubeAPIServer: https://member-agent.acc-system:443/k8s
+    log:
+      encoder: console
+      level: 0
+      enableLevelColor: false
+      enableCaller: true
+    s3:
+      secretName: s3-cred # accesskey, secretkey
+      bucket: pipeline
+{% if minio_ha == "yes" %}
+      endpoint: minio-ha.acc-system:9000
+{% else %}
+      endpoint: minio.acc-system:9000
+{% endif %}
+      secure: false
+kind: ConfigMap
+metadata:
+  name: cicd-apiserver-config
+  namespace: acc-system

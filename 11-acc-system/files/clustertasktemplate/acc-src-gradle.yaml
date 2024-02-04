@@ -1,0 +1,50 @@
+---
+apiVersion: cicd.accordions.co.kr/v1beta1
+kind: ClusterTaskTemplate
+metadata:
+  annotations:
+    accordions.co.kr/summary: 'Source Build: gradle'
+    cicd.accordions.co.kr/category: build
+  name: acc-src-gradle
+spec:
+  container:
+    args:
+    - |
+      {{.values.cmd}} --gradle-user-home={{.values.gradleHome}} --no-daemon --info
+    command:
+    - sh
+    - -c
+    image: '{{.values.gradleImage}}'
+    securityContext:
+      runAsUser: 65532
+  valueschema:
+    properties:
+      cmd:
+        default: 
+          gradle {{.values.gradleTasks}} --parallel --project-dir={{.values.projectDir}}
+        description: gradle 실행의 커맨드 명령어
+        type: string
+      gradleHome:
+        default: gradle_home
+        type: string
+        description: gradle home을 지정합니다.(상대경로)
+      gradleImage:
+        default: base_registry_address:base_registry_port/gradle:8-jdk8
+        description: gradle 이미지
+        enum:
+        - base_registry_address:base_registry_port/gradle:8-jdk8
+        - base_registry_address:base_registry_port/gradle:8-jdk11
+        - base_registry_address:base_registry_port/gradle:6.9.0-jdk8
+        - base_registry_address:base_registry_port/gradle:7.1-jdk8-openj9
+        - base_registry_address:base_registry_port/gradle:4.10-jdk7
+        type: string
+      gradleTasks:
+        default: clean jar
+        description: gradle Tasks를 지정합니다.(jar|war|clean 등)
+        type: string
+      projectDir:
+        default: .
+        description: gradle project dir을 지정합니다.(상대경로 ex scm)
+        type: string
+    type: object
+

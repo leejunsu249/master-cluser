@@ -1,0 +1,48 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app: prometheus
+    role: alert-rules
+  name: prometheus-rules
+  namespace: acc-system
+spec:
+  groups:
+  - name: k8s.rules
+    rules:
+    - expr: |
+        sum by (cluster, namespace, pod, container) (
+          rate(container_cpu_usage_seconds_total{job="kubelet", metrics_path="/metrics/cadvisor", image!="", container!="POD"}[5m])
+        ) * on (cluster, namespace, pod) group_left(node) topk by (cluster, namespace, pod) (
+          1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""})
+        )
+      record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
+    - expr: |
+        container_memory_working_set_bytes{job="kubelet", metrics_path="/metrics/cadvisor", image!=""}
+        * on (namespace, pod) group_left(node) topk by(namespace, pod) (1,
+          max by(namespace, pod, node) (kube_pod_info{node!=""})
+        )
+      record: node_namespace_pod_container:container_memory_working_set_bytes
+  - name: node-exporter.rules
+    rules:
+    - expr: |
+        1 - avg without (cpu, mode) (
+          rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[1m])
+        )
+      record: instance:node_cpu_utilisation:rate1m
+    - expr: |
+        1 - (
+          node_memory_MemAvailable_bytes{job="node-exporter"}
+        /
+          node_memory_MemTotal_bytes{job="node-exporter"}
+        )
+      record: instance:node_memory_utilisation:ratio
+    - expr: |
+        rate(node_disk_io_time_seconds_total{job="node-exporter", device=~"mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|dasd.+"}[1m])
+      record: instance_device:node_disk_io_time_seconds:rate1m
+  - name: kube-prometheus-node-recording.rules
+    rules:
+    - expr: sum(rate(node_network_receive_bytes_total[3m])) BY (instance)
+      record: instance:node_network_receive_bytes:rate:sum
+    - expr: sum(rate(node_network_transmit_bytes_total[3m])) BY (instance)
+      record: instance:node_network_transmit_bytes:rate:sum
