@@ -1,0 +1,40 @@
+---
+- wait_for:
+    host: 127.0.0.1
+    port: "{{ kube_apiserver_port }}"
+    delay: 10
+
+- name: Clean Iptables
+  shell: >
+    iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X
+  when:
+    - network_cni == 'calico'
+  ignore_errors: yes
+
+# - name: Delete cert peer, server 
+#   shell: >
+#     rm -rf /etc/kubernetes/pki/{{ item }}
+#   with_items:
+#     - "peer-master*"
+#     - "server-master*"
+#   ignore_errors: yes
+
+- name: Copy coredns_configmap.sh
+  copy:
+    src: coredns_configmap.sh
+    dest: "{{ kube_addon_dir }}/coredns_configmap.sh"
+  when:
+    - inventory_hostname in groups['master']
+
+- name: "Mode 755 for coredns_configmap.sh"
+  file:
+    path: "{{ kube_addon_dir }}/coredns_configmap.sh"
+    mode: 0755
+  when:
+    - inventory_hostname in groups['master']
+
+- name: Run coredns_configmap.sh
+  shell: >
+    /bin/sh -c "{{ kube_addon_dir }}/coredns_configmap.sh"
+  when:
+    - inventory_hostname in groups['master']

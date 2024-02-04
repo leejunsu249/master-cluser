@@ -1,0 +1,30 @@
+---
+- name: default sysconfig directory
+  file: path=/etc/sysconfig state=directory
+  ignore_errors: yes
+
+- name: Template config.yaml
+  template:
+    src: config.yaml
+    dest: /var/lib/kubelet/config.yaml
+
+- name: Template kubeadm-flags.env
+  template:
+    src: kubeadm-flags.env
+    dest: /var/lib/kubelet/kubeadm-flags.env
+
+- name: Template kubelet
+  template:
+    src: kubelet
+    dest: /etc/sysconfig/kubelet
+
+- name: Reload changing kubelet
+  command: systemctl daemon-reload
+
+- name: Start and enable services
+  service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - kubelet

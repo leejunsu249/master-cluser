@@ -1,0 +1,118 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+bootstrapTokens:
+- ttl: "0"
+localAPIEndpoint:
+  advertiseAddress: {{ ansible_facts[acc_interface.replace('-', '_')].ipv4.address }}
+  bindPort: {{ kube_apiserver_port }}
+nodeRegistration:
+  criSocket: "unix:///run/containerd/containerd.sock"
+{% if proxy_mode == "ipvs" %}
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: "ipvs"
+{% endif %}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+failSwapOn: false
+cgroupDriver: systemd
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+controlPlaneEndpoint: "{{ keep_vip }}:{{ haproxy_port }}"
+networking:
+  serviceSubnet: {{ service_cidr }}
+  podSubnet: {{ pod_network_cidr }}
+kubernetesVersion: {{ kubernetes_version }}
+apiServer:
+  extraArgs:
+    audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
+    audit-log-path: "/var/log/audit.log"
+    audit-log-maxage: "7"
+    audit-log-maxbackup: "10"
+    audit-log-maxsize: "500"
+    anonymous-auth: "true"
+    profiling: "false"
+    tls-cipher-suites: "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+    bind-address: {{ kube_apiserver_bind_address }}
+{% if selinux_enable == "true" %}
+    enable-admission-plugins: NodeRestriction,PodSecurityPolicy,PodNodeSelector
+{% else %}
+    enable-admission-plugins: NodeRestriction,PodNodeSelector
+{% endif %}
+{% if kube_apiserver_disable_admission_plugins|length > 0 %}
+    disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }} 
+{% endif %}
+{% if  kubernetes_version >= "1.9" %}
+    endpoint-reconciler-type: lease
+{% endif %}
+    service-node-port-range: {{ kube_apiserver_node_port_range }}
+    kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
+    allow-privileged: "true"
+{% for key in kube_kubeadm_apiserver_extra_args %}
+    {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
+{% endfor %}
+  extraVolumes:
+  - name: audit-log
+    hostPath: /etc/kubernetes/audit-policy.yaml
+    mountPath: /etc/kubernetes/audit-policy.yaml
+    readOnly: true
+    pathType: "File"
+  - name: log
+    hostPath: /var/log
+    mountPath: /var/log
+    readOnly: false
+    pathType: "DirectoryOrCreate"
+  - name: timezone
+    hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    readOnly: false
+    pathType: "File"
+  certSANs:
+{% for san in apiserver_sans.split(' ') | unique %}
+  - {{ san }}
+{% endfor %}
+imageRepository: "{{ base_registry_address }}:{{ base_registry_port }}"
+controllerManager:
+  extraArgs:
+    profiling: "false"
+    feature-gates: RotateKubeletServerCertificate=true
+    terminated-pod-gc-threshold: "10"
+    node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
+    node-monitor-period: {{ kube_controller_node_monitor_period }}
+    horizontal-pod-autoscaler-sync-period: {{ kube_controller_autoscaler_sync_period }}
+{% for key in kube_kubeadm_controller_extra_args %}
+    {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
+{% endfor %}
+  extraVolumes:
+  - name: log
+    hostPath: /var/log
+    mountPath: /var/log
+    readOnly: false
+    pathType: "DirectoryOrCreate"
+  - name: timezone
+    hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    readOnly: false
+    pathType: "File"
+scheduler:
+  extraArgs:
+    profiling: "false"
+{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
+{% for key in kube_kubeadm_scheduler_extra_args %}
+    {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+  extraVolumes:
+  - name: log
+    hostPath: /var/log
+    mountPath: /var/log
+    readOnly: false
+    pathType: "DirectoryOrCreate"
+  - name: timezone
+    hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    readOnly: false
+    pathType: "File"

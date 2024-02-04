@@ -1,0 +1,6 @@
+---
+- name: Join control-plane nodes with master
+  shell: "kubeadm join --token {{ hostvars[groups['manager-master'][0]].token.stdout }} {{ keep_vip }}:{{ haproxy_port }} --control-plane --certificate-key {{ hostvars[groups['master'][0]].certificate_key.stdout }} --ignore-preflight-errors=all --discovery-token-unsafe-skip-ca-verification"
+  register: kubeadm_controlplane_join_command
+  tags:
+    - output

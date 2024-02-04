@@ -1,0 +1,29 @@
+############################### Setting Token ###############################
+- name: set fact certificate_key
+  set_fact:
+    certificate_key: "{{ kubeadm_init_result.stdout | regex_search('certificate-key\\s+(\\S+)', '\\1') | trim}}"
+
+- name: set var fact certificate_key
+  vars:
+    join_certificate_key: "{{ certificate_key.stdout_lines }}"
+  debug: msg="{{certificate_key.stdout_lines }}"
+  when: inventory_hostname in groups['master']
+  tags:
+    - output  
+
+- name: Get the token id from the master initialization
+  shell: "echo `kubeadm token list | tail -n1 | awk '{print $1}'`"
+  register: kubeadm_token
+
+- name: set var fact token
+  set_fact:
+    token: "{{kubeadm_token}}"
+  when: kubeadm_token.changed
+
+- name: print output of kubeadm_token
+  vars:
+    join_token: "{{ token.stdout_lines }}"
+  debug: msg="{{ token.stdout_lines }}"
+  when: inventory_hostname in groups['master']
+  tags:
+    - output

@@ -1,0 +1,100 @@
+---
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: kubeadm aggregate all SANs
+  set_fact:
+    apiserver_sans: >-
+      kubernetes
+      kubernetes.default
+      kubernetes.default.svc
+      kubernetes.default.svc.cluster
+      kubernetes.default.svc.cluster.local
+      {{ master_ip }}
+      {{ master_host_name }}
+      {{ master_external_ip }}
+      localhost
+      127.0.0.1
+      10.254.0.1
+      {{ service_ip.stdout }}.0.1
+      {{ master2_ip }}
+      {{ master3_ip }}
+      {{ master2_hostname }}
+      {{ master3_hostname }}
+      {{ keep_vip }}
+  tags: facts
+
+
+#############################################################
+
+- name: default addon directory
+  file: path={{ kube_addon_dir }} state=directory #owner={{ ansible_user }} group={{ ansible_group }}
+  register: default_addon_dir
+  ignore_errors: yes
+
+- name: kubeadm | Create kubeadm config master
+  template:
+    src: kubeadm-config.yaml.master3
+    dest: "{{ kube_addon_dir }}/kubeadm-config.yaml"
+  register: kubeadm_config
+
+- name: copy audit-policy
+  template:
+    src: audit-policy.yaml
+    dest: "/etc/kubernetes/audit-policy.yaml"
+
+#############################################################
+
+- name: Copy cluster_etcd.sh file
+  copy:
+    src: cluster_etcd.sh
+    dest: "{{ kube_addon_dir }}/cluster_etcd.sh"
+
+- name: master_ip change for cluster_etcd.sh
+  shell: sed -i 's/master_ip/{{ master_ip }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: master2_ip change for cluster_etcd.sh
+  shell: sed -i 's/master2_ip/{{ master2_ip }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: master3_ip change for cluster_etcd.sh
+  shell: sed -i 's/master3_ip/{{ master3_ip }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: master_host_name change for cluster_etcd.sh
+  shell: sed -i 's/master_host_name/{{ master_host_name }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: master2_hostname change for cluster_etcd.sh
+  shell: sed -i 's/master2_hostname/{{ master2_hostname }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: master3_hostname change for cluster_etcd.sh
+  shell: sed -i 's/master3_hostname/{{ master3_hostname }}/g' {{ kube_addon_dir }}/cluster_etcd.sh
+
+- name: Mode 755 for cluster_etcd.sh
+  file:
+    path: "{{ kube_addon_dir }}/cluster_etcd.sh"
+    mode: 0755
+
+- name: Run cluster_etcd.sh
+  shell: >
+    /bin/bash -c "{{ kube_addon_dir }}/cluster_etcd.sh"
+
+#############################################################
+
+- name: add cluster etcd
+  shell:
+    cat /tmp/{{ ansible_facts[acc_interface.replace('-', '_')].ipv4.address }}/etcd-config.yaml >> {{ kube_addon_dir }}/kubeadm-config.yaml
+
+
+- name: Creates manifests directory
+  file: path=/etc/kubernetes/manifests state=directory mode=0777
+  ignore_errors: yes
+
+#############################################################
+
+- name: Create Directory etcd
+  shell: mkdir -p /etc/kubernetes/pki/etcd
+  when:
+    - inventory_hostname in groups['master']
+  ignore_errors: yes
+

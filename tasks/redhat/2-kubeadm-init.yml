@@ -1,0 +1,30 @@
+##########################################################################
+# kubeadm init
+##########################################################################
+- name: kubeadm init phase control-plane
+  shell: >
+    sudo kubeadm init --control-plane-endpoint "{{ keep_vip }}:{{ haproxy_port }}" --upload-certs --config={{ kube_addon_dir }}/kubeadm-config.yaml
+  register: kubeadm_init_result
+
+- name: wait_for keepalived, haproxy
+  wait_for:
+    host: "{{ keep_vip }}"
+    port: "{{ haproxy_port }}"
+  register: result
+  until: result.elapsed == 0
+  retries: 30
+  delay: 5
+
+- name: make direcotry (.kube)
+  file: path=/root/.kube state=directory
+  register: kubeconfig_addon_dir
+  ignore_errors: yes
+
+- name: Copy admin.conf to .kube/config
+  shell: >
+    cp -f /etc/kubernetes/admin.conf /root/.kube/config
+  ignore_errors: yes
+
+- name: Chmod 600 config
+  shell: >
+    chmod 600 /root/.kube/config

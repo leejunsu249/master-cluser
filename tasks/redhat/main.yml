@@ -1,0 +1,41 @@
+---
+- name: Master kubeadm init config
+  include_tasks: 1-kubeadm-config.yml
+  when:
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['manager-master-cluster']
+
+- name: kubeadm init
+  include_tasks: 2-kubeadm-init.yml
+  when:
+    - inventory_hostname in groups['master']
+
+- name: token setting
+  include_tasks: 3-token-setting.yml
+  when:
+    - inventory_hostname in groups['master']
+
+- name: master cluster join
+  include_tasks: 4-master-join.yml
+  when:
+    - inventory_hostname in groups['manager-master-cluster'] 
+
+- name: node join
+  include_tasks: 5-manager-node-join.yml
+  when:
+    - inventory_hostname in groups['manager-minions']
+
+- name: Copy kubelet config 
+  include_tasks: 6-kubelet-config.yml
+  when:
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['manager-master-cluster'] or inventory_hostname in groups['manager-minions']
+
+- name: Coredns cm setting
+  include_tasks: 9-config.yml
+  when: 
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['master-cluster']
+
+- name: Set kubebench
+  include_tasks: 8-bench.yml
+  when:
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['master-cluster'] or inventory_hostname in groups['minions'] or inventory_hostname in groups['infra']
+

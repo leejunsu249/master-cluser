@@ -1,0 +1,23 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+- RequestReceived
+rules:
+- level: None
+  verbs: [get, list, watch]
+- level: None
+  resources:
+  - group: authorization.k8s.io
+- level: None
+  users:
+  - system:apiserver
+  - system:kube-controller-manager
+  - system:kube-scheduler
+- level: None
+  userGroups:
+  - system:serviceaccounts:kube-system
+  - system:nodes
+  - system:bootstrappers
+- level: Metadata
+  omitStages:
+  - RequestReceived

@@ -1,0 +1,4 @@
+[
+  {"op":"add","path":"/spec/template/spec/volumes/1","value":{ "name": "hosts", "hostPath": { "path": "/etc/hosts", "type": "File"}}},
+  {"op":"add","path":"/spec/template/spec/containers/0/volumeMounts/1","value":{ "name": "hosts", "mountPath": "/etc/hosts"}}
+]

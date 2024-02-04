@@ -1,0 +1,18 @@
+---
+- name: edit pki 600
+  shell: >
+    chmod -R 600 /etc/kubernetes/pki
+
+- name: edit etcd
+  shell: >
+    chown -R etcd:etcd /var/lib/etcd
+  when:
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['manager-master-cluster']
+
+- name: chcon pki
+  shell: >
+    chcon -Rt svirt_sandbox_file_t /etc/kubernetes/pki
+  when:
+    - inventory_hostname in groups['master'] or inventory_hostname in groups['master-cluster']
+    - ansible_facts['selinux']['status'] != 'disabled'
+  ignore_errors: yes
