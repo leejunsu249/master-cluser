@@ -1,0 +1,21 @@
+---
+###############################################################################
+# chartmuseum
+###############################################################################
+- name: chartmuseum addon directory
+  file: path={{ kube_addon_dir }}/acc-global/chart state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (chartmuseum)
+  template:
+    src: "chart/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/chart/{{ item }}"
+  with_items:
+    - chart-deploy.yaml
+    - chart-pvc.yaml
+    - chart-svc.yaml
+#    - chart-secret.yaml
+
+- name: Deploy chartmuseum 
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/chart

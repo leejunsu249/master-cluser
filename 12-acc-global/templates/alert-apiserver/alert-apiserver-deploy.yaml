@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-apiserver
+  namespace: acc-global
+spec:
+  selector:
+    matchLabels:
+      app: alert-apiserver
+  template:
+    metadata:
+      labels:
+        app: alert-apiserver
+    spec:
+      imagePullSecrets:
+        - name: infra-registry
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: accordion-role
+                    operator: In
+                    values:
+                      - infra
+              weight: 100
+      tolerations:
+        - effect: NoSchedule
+          key: accordion-role
+          operator: Equal
+          value: infra
+      serviceAccountName: alert-apiserver
+      containers:
+        - name: app
+          image: "{{ base_registry_address }}:{{ base_registry_port }}/alert-apiserver:{{ alert_apiserver_version }}"
+          imagePullPolicy: Always
+          ports:
+            - name:  http-port
+              containerPort: 8080
+              protocol: TCP

@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gateway-proxy
+  namespace: acc-global
+  labels:
+    app: gateway-proxy
+spec:
+  selector:
+    matchLabels:
+      app: gateway-proxy
+  template:
+    metadata:
+      labels:
+        app: gateway-proxy
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+      containers:
+      - name: proxy
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/nginx:{{ gateway_proxy_version }}"
+        imagePullPolicy: Always
+        env:
+        - name: PROXY_PASS
+          value: http://gateway.acc-global
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+        - name: cert
+          mountPath: /etc/ssl/certs/nginx
+          readOnly: true
+        - name: tmpls
+          mountPath: /etc/nginx/templates
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+      - name: cert
+        secret:
+          secretName: gateway-proxy
+      - name: tmpls
+        configMap:
+          name: gateway-proxy

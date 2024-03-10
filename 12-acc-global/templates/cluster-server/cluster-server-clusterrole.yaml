@@ -1,0 +1,29 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-server
+  labels:
+    app: cluster-server
+rules:
+- apiGroups: [""]
+  resources: [nodes, configmaps, secrets]
+  verbs: [get, list, watch, update]
+- apiGroups: [""]
+  resources: [pods]
+  verbs: [deletecollection]
+- apiGroups: [""]
+  resources: [events]
+  verbs: [create]
+- apiGroups: [coordination.k8s.io]
+  resources: [leases]
+  verbs: [get, create, update]
+- apiGroups: [authentication.k8s.io]
+  resources: [tokenreviews]
+  verbs: [create]
+- apiGroups: [authorization.k8s.io]
+  resources: [subjectaccessreviews]
+  verbs: [create]
+- apiGroups: [management.accordions.co.kr]
+  resources: [clusterinfoes, clusterinfoes/status]
+  verbs: [get, list, watch, update]

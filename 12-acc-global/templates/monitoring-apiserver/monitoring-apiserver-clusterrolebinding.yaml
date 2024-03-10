@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name:  monitoring-apiserver
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-apiserver
+subjects:
+  - kind: ServiceAccount
+    name:  monitoring-apiserver
+    namespace: acc-global
+

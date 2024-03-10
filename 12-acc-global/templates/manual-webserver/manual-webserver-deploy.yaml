@@ -1,0 +1,38 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manual-webserver
+  namespace: acc-global
+  labels:
+    app: manual-webserver
+spec:
+  selector:
+    matchLabels:
+      app: manual-webserver
+  template:
+    metadata:
+      labels:
+        app: manual-webserver
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      containers:
+        - name: manual-webserver
+          image: {{ base_registry_address }}:{{ base_registry_port }}/manual-webserver:{{ manual_webserver_version }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80

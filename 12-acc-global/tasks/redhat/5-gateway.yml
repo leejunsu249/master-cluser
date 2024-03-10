@@ -1,0 +1,23 @@
+---
+###############################################################################
+# gateway
+###############################################################################
+- name: gateway addon directory
+  file: path={{ kube_addon_dir }}/acc-global/gateway state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (gateway)
+  template:
+    src: "gateway/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/gateway/{{ item }}"
+  with_items:
+    - gateway-clusterrolebinding.yaml
+    - gateway-clusterrole.yaml
+    - gateway-deploy.yaml
+    - gateway-sa.yaml
+    - gateway-secret.yaml
+    - gateway-svc.yaml
+
+- name: Deploy gateway
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/gateway

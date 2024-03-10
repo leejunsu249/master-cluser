@@ -1,0 +1,19 @@
+---
+###############################################################################
+# manual-webserver
+###############################################################################
+- name: manual-webserver addon directory
+  file: path={{ kube_addon_dir }}/acc-global/manual-webserver/bases state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (manual-webserver)
+  template:
+    src: "manual-webserver/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/manual-webserver/{{ item }}"
+  with_items:
+    - manual-webserver-deploy.yaml
+    - manual-webserver-svc.yaml
+
+- name: Deploy manual-webserver
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/manual-webserver

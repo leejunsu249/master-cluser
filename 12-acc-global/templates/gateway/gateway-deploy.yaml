@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: acc-global
+  labels:
+    app: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - name: gateway
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/gateway:{{ gateway_version }}"
+        imagePullPolicy: Always
+        command:
+        - gateway
+        - --secret=acc-global/gateway
+        - --keycloak-secret=acc-global/keycloak
+        - --cluster-server-secret=acc-global/cluster-server
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      serviceAccountName: gateway
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime

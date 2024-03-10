@@ -1,0 +1,39 @@
+---
+- name: Create keycloak
+  include_tasks: 0-keycloak.yml
+
+- name: Create keycloak-observer
+  include_tasks: 0-keycloak-observer.yml
+
+- name: Create cluster-server
+  include_tasks: 1-cluster-server.yml
+
+- name: Create thanos
+  include_tasks: 2-thanos.yml
+  when:
+    - prometheus_install == "yes"
+
+- name: Create chartmuseum
+  include_tasks: 4-chart.yml
+
+- name: Create host-gateway
+  include_tasks: 5-gateway.yml
+
+- name: Create front-webserver
+  include_tasks: 6-console.yml
+
+- name: Create host-proxy
+  include_tasks: 7-gateway-proxy.yml
+
+- name: Create helm-server
+  include_tasks: 8-helm-server.yml
+
+- name: Create alert-apiserver
+  include_tasks: 9-alert-apiserver.yml
+
+- name: Create monitoring-apiserver
+  include_tasks: 10-monitoring-apiserver.yml
+
+- name: Create manual-webserver
+  include_tasks: 11-manual-webserver.yml
+

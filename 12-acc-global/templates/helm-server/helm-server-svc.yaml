@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: helm-server
+  namespace: acc-global
+  labels:
+    app: helm-server
+spec:
+  selector:
+    app: helm-server
+  ports:
+  - name: api
+    port: 80
+    targetPort: 8080
+    protocol: TCP

@@ -1,0 +1,70 @@
+---
+###############################################################################
+# keycloak
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: keycloak addon directory
+  file: path={{ kube_addon_dir }}/acc-global/keycloak/keycloak state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: postgres addon directory
+  file: path={{ kube_addon_dir }}/acc-global/keycloak/postgres state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Create Secret
+  shell: >
+    echo $(tr -dc a-z0-9 < /dev/urandom | head -c 8 | xargs)-$(tr -dc a-z0-9 < /dev/urandom | head -c 4 | xargs)-$(tr -dc a-z0-9 < /dev/urandom | head -c 4 | xargs)-$(tr -dc a-z0-9 < /dev/urandom | head -c 4 | xargs)-$(tr -dc a-z0-9 < /dev/urandom | head -c 12 | xargs)
+  register: keycloak_secret
+
+- name: Print keycloak secret
+  debug: msg="{{ keycloak_secret.stdout }}"
+  tags:
+    - output
+
+- name: keycloak addon directory
+  file: path={{ kube_addon_dir }}/acc-global/{{ cluster_name }}/keycloak/file state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  delegate_to: "{{ groups['local'][0] }}"
+  ignore_errors: yes
+
+- name: save secret file
+  shell: >
+    echo "{{ keycloak_secret.stdout }}" > {{ kube_addon_dir }}/acc-global/{{ cluster_name }}/keycloak/file/secret
+  delegate_to: "{{ groups['local'][0] }}"
+
+- name: Copy Template (keycloak-postgres)
+  template:
+    src: "keycloak/postgres/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/keycloak/postgres/{{ item }}"
+  with_items:
+    - pgdata-deploy.yaml
+    - pgdata-pvc.yaml
+    - pgdata-secret.yaml
+    - pgdata-svc.yaml
+
+- name: Copy Template (keycloak)
+  template:
+    src: "keycloak/keycloak/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/keycloak/keycloak/{{ item }}"
+  with_items:
+    - keycloak-deploy.yaml
+    - keycloak-secret.yaml
+    - keycloak-service.yaml
+
+- name: Deploy keycloak-postgres
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/keycloak/postgres
+
+- name: Deploy keycloak 
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/keycloak/keycloak
+
+- name: restart kube-system
+  shell: >
+    kubectl delete pod -n {{ item }} --all --force --grace-period=0
+  with_items:
+    - kube-system
+

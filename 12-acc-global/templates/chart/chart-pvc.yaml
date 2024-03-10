@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    release-name: chartmuseum
+    release-namespace: acc-global
+  labels:
+    app: chartmuseum-chartmuseum
+    release: chartmuseum
+  name: chartmuseum-chartmuseum
+  namespace: acc-global
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ chartmuseum_storage }}
+  storageClassName: "accordion-storage"
+  volumeMode: Filesystem

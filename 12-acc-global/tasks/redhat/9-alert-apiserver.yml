@@ -1,0 +1,23 @@
+---
+###############################################################################
+# alert-apiserver
+###############################################################################
+- name: alert-apiserver addon directory
+  file: path={{ kube_addon_dir }}/acc-global/alert-apiserver state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (alert-apiserver)
+  template:
+    src: "alert-apiserver/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/alert-apiserver/{{ item }}"
+  with_items:
+    - alert-apiserver-clusterrolebinding.yaml
+    - alert-apiserver-clusterrole.yaml
+    - alert-apiserver-deploy.yaml
+    - alert-apiserver-sa.yaml
+    - alert-apiserver-svc.yaml
+    - alert-apiserver-secret.yaml
+
+- name: Deploy alert-apiserver
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/alert-apiserver

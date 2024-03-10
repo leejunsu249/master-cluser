@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-db
+  namespace: acc-global
+  labels:
+    app: keycloak-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: keycloak-db
+  template:
+    metadata:
+      labels:
+        app: keycloak-db
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+            weight: 100
+      containers:
+      - name: postgres
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/postgres:13"
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: keycloak-db
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+        - name: data
+          mountPath: /var/lib/postgresql/data
+      imagePullSecrets:
+      - name: infra-registry
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime
+      - name: data
+        persistentVolumeClaim:
+          claimName: keycloak-db

@@ -1,0 +1,21 @@
+---
+###############################################################################
+# gateway-proxy
+###############################################################################
+- name: gateway-proxy addon directory
+  file: path={{ kube_addon_dir }}/acc-global/gateway-proxy state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (gateway-proxy)
+  template:
+    src: "gateway-proxy/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/gateway-proxy/{{ item }}"
+  with_items:
+    - gateway-proxy-ds.yaml
+    - gateway-proxy-svc.yaml
+    - gateway-proxy-secret.yaml
+    - gateway-proxy-cm.yaml
+
+- name: Deploy gateway-proxy
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/gateway-proxy

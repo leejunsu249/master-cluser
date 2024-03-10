@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-apiserver
+  namespace: acc-global
+spec:
+  type: ClusterIP
+  selector:
+    app: monitoring-apiserver
+  ports:
+    - port: 80
+      targetPort: 8080
+

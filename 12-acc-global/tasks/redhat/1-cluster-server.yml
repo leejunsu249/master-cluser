@@ -1,0 +1,55 @@
+---
+###############################################################################
+# cluster-server
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: cluster-server addon directory
+  file: path={{ kube_addon_dir }}/acc-global/cluster-server state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Get secret
+  shell: >
+    cat {{ kube_addon_dir }}/acc-global/{{ cluster_name }}/keycloak/file/secret
+  register: keycloak_secret
+  delegate_to: "{{ groups['local'][0] }}"
+
+- name: Get tls.crt
+  shell: >
+    cat {{ kube_addon_dir }}/clusterinfo/cert/tls.crt | base64 -w 0
+  register: base_tls_crt
+
+- name: get base_tls_crt
+  debug: msg="{{ base_tls_crt.stdout }}"
+  tags:
+    - output
+
+- name: Get tls.key
+  shell: >
+    cat {{ kube_addon_dir }}/clusterinfo/cert/tls.key | base64 -w 0
+  register: base_tls_key
+
+- name: get base_tls_key
+  debug: msg="{{ base_tls_key.stdout }}"
+  tags:
+    - output
+
+- name: Copy Template (cluster-server)
+  template:
+    src: "cluster-server/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/cluster-server/{{ item }}"
+  with_items:
+    - cluster-server-apiservice.yaml
+    - cluster-server-deploy.yaml
+    - cluster-server-secret.yaml
+    - cluster-server-sa.yaml
+    - cluster-server-svc.yaml
+    - cluster-server-clusterrole.yaml
+    - cluster-server-clusterrolebinding.yaml
+
+- name: Deploy cluster-server 
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/cluster-server

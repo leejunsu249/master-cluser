@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helm-server
+  namespace: acc-global
+  labels:
+    app: helm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helm-server
+  template:
+    metadata:
+      labels:
+        app: helm-server
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+      containers:
+      - name: helm-server
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/helm-server:{{ helm_server_version }}"
+        imagePullPolicy: Always
+        command:
+        - helm-server
+        - --keycloak-secret=acc-global/keycloak
+        volumeMounts:
+        - name: config
+          mountPath: /root/.config/helm
+        - name: cache
+          mountPath: /root/.cache/helm
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      serviceAccountName: helm-server
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: helm-server-config
+      - name: cache
+        persistentVolumeClaim:
+          claimName: helm-server-cache
+      - name: timezone
+        hostPath:
+          path: /etc/localtime

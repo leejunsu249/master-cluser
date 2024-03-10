@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-observer
+  namespace: acc-global
+  labels:
+    app: keycloak-observer

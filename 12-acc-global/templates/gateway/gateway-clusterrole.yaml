@@ -1,0 +1,18 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+    version: 2.0.6
+rules:
+- apiGroups: [""]
+  resources: [secrets, nodes]
+  verbs: [get, list, watch, update]
+- apiGroups: [management.accordions.co.kr]
+  resources: [clusterinfoes]
+  verbs: [get, list, watch]
+- apiGroups: [auth.accordions.co.kr]
+  resources: ["*"]
+  verbs: [get, list, watch]

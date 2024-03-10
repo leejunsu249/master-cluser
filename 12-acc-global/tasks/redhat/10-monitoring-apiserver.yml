@@ -1,0 +1,22 @@
+---
+###############################################################################
+# monitoring-apiserver
+###############################################################################
+- name: monitoring-apiserver addon directory
+  file: path={{ kube_addon_dir }}/acc-global/monitoring-apiserver state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (monitoring-apiserver)
+  template:
+    src: "monitoring-apiserver/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/monitoring-apiserver/{{ item }}"
+  with_items:
+    - monitoring-apiserver-clusterrolebinding.yaml
+    - monitoring-apiserver-clusterrole.yaml
+    - monitoring-apiserver-deploy.yaml
+    - monitoring-apiserver-sa.yaml
+    - monitoring-apiserver-svc.yaml
+
+- name: Deploy monitoring-apiserver
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/monitoring-apiserver

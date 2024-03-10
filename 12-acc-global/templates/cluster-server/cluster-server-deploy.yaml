@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-server
+  namespace: acc-global
+  labels:
+    app: cluster-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-server
+  template:
+    metadata:
+      labels:
+        app: cluster-server
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: accordion-role
+                operator: In
+                values:
+                - infra
+      containers:
+      - name: cluster-server
+        image: "{{ base_registry_address }}:{{ base_registry_port }}/cluster-server:{{ cluster_server_version }}"
+        imagePullPolicy: Always
+        command:
+        - cluster-server
+        - --secret=acc-global/cluster-server
+        - --keycloak-secret=acc-global/keycloak
+        volumeMounts:
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+      imagePullSecrets:
+      - name: infra-registry
+      serviceAccountName: cluster-server
+      tolerations:
+      - effect: NoSchedule
+        key: accordion-role
+        operator: Equal
+        value: infra
+      volumes:
+      - name: timezone
+        hostPath:
+          path: /etc/localtime

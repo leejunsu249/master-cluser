@@ -1,0 +1,19 @@
+---
+#####################################################
+# Setting
+####################################################
+- name: thanos addon directory
+  file: path={{ kube_addon_dir }}/acc-global/thanos/bases state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (thanos)
+  template:
+    src: "thanos/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/thanos/{{ item }}"
+  with_items:
+    - 1-thanos-querier-svc.yaml
+    - 2-thanos-querier-deploy.yaml
+
+- name: Deploy thanos
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/thanos

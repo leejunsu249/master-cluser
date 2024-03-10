@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-server
+  namespace: acc-global
+  labels:
+    app: cluster-server
+spec:
+  selector:
+    app: cluster-server
+  ports:
+  - name: api
+    port: 8443
+    targetPort: 8443
+    protocol: TCP
+

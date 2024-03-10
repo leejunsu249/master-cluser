@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  annotations:
+    release-name: chartmuseum
+    release-namespace: acc-global
+  labels:
+    app: chartmuseum-chartmuseum
+    release: chartmuseum
+  name: chartmuseum
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: {{ chartmuseum_storage }}
+  nfs:
+    path: {{ accordion_nfs_path }}/chartmuseum
+    server: {{ nfs_server_ip }}
+  storageClassName: ""
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem

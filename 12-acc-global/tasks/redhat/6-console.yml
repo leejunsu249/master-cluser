@@ -1,0 +1,19 @@
+---
+###############################################################################
+# console
+###############################################################################
+- name: console addon directory
+  file: path={{ kube_addon_dir }}/acc-global/console state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (console)
+  template:
+    src: "console/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/console/{{ item }}"
+  with_items:
+    - console-deploy.yaml
+    - console-svc.yaml
+
+- name: Deploy console
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/console

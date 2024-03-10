@@ -1,0 +1,53 @@
+---
+###############################################################################
+# helm-server
+###############################################################################
+- name: helm-server addon directory
+  file: path={{ kube_addon_dir }}/acc-global/helm-server state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (helm-server)
+  template:
+    src: "helm-server/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/helm-server/{{ item }}"
+  with_items:
+    - helm-server-clusterrolebinding.yaml
+    - helm-server-clusterrole.yaml
+    - helm-server-deploy.yaml
+    - helm-server-pvc.yaml
+    - helm-server-svc.yaml
+    - helm-server-sa.yaml
+
+- name: Deploy helm-server
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/helm-server
+
+- name : wait_for(10s)
+  wait_for: timeout=10
+  delegate_to: localhost
+  become: no
+
+- name: Get helm-server pod
+  shell: >
+    kubectl get pod -n acc-global | grep helm-server | cut -d ' ' -f 1
+  register: helm_server
+  until: helm_server.stdout != ""
+  retries: 30
+  delay: 5
+
+- name: helm-server pod wait_for
+  shell: >
+    kubectl wait --for=condition=ready pod/{{ helm_server.stdout }} -n acc-global
+  register: result
+  until: result.rc == 0
+  retries: 30
+  delay: 5
+
+- name: Craete accordion repo
+  shell: >
+    kubectl exec -it -n acc-global -c helm-server {{ helm_server.stdout }} -- /usr/local/bin/helm repo add accordion http://chartmuseum-chartmuseum.acc-global.svc.cluster.local:8080/charts
+  register: result
+  until: result.rc == 0
+  retries: 30
+  delay: 5
+

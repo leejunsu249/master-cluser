@@ -1,0 +1,26 @@
+---
+###############################################################################
+# keycloak-observer
+###############################################################################
+- name: Get ServiceIP
+  shell: >
+    echo {{ service_cidr }} | cut -d "." -f1,2
+  register: service_ip
+
+- name: keycloak-observer addon directory
+  file: path={{ kube_addon_dir }}/acc-global/keycloak-observer state=directory owner={{ ansible_user }} group={{ ansible_group }}
+  ignore_errors: yes
+
+- name: Copy Template (keycloak-observer)
+  template:
+    src: "keycloak-observer/{{ item }}"
+    dest: "{{ kube_addon_dir }}/acc-global/keycloak-observer/{{ item }}"
+  with_items:
+    - keycloak-observer-clusterrolebinding.yaml
+    - keycloak-observer-clusterrole.yaml
+    - keycloak-observer-deploy.yaml
+    - keycloak-observer-sa.yaml
+
+- name: Deploy keycloak-observer 
+  shell: >
+    kubectl apply -f {{ kube_addon_dir }}/acc-global/keycloak-observer

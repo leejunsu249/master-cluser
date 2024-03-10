@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-proxy
+  namespace: acc-global
+  labels:
+    app: gateway-proxy
+data:
+  default.conf.template: |
+    server_tokens off;
+    server {
+        listen 443 ssl http2;
+        error_page 497 https://$http_host$request_uri;
+        # ssl settings
+        ssl_protocols         TLSv1.2 TLSv1.3;
+        ssl_certificate       /etc/ssl/certs/nginx/tls.crt;
+        ssl_certificate_key   /etc/ssl/certs/nginx/tls.key;
+        location / {
+            client_max_body_size  1000M;
+            # kill cache
+            add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+            if_modified_since off;
+            expires off;
+            etag off;
+            proxy_pass          ${PROXY_PASS};
+            proxy_redirect      http:// https://;
+            proxy_buffering     off;
+            proxy_buffer_size   16k;
+            proxy_buffers       8 16k;
+            proxy_no_cache      1;
+            proxy_cache_bypass  1;
+            # websocket proxy settings
+            proxy_http_version  1.1;
+            proxy_set_header    Upgrade     $http_upgrade;
+            proxy_set_header    Connection  "upgrade";
+            # general proxy settings
+            proxy_set_header    Host              $http_host;
+            proxy_set_header    X-Scheme          $scheme;
+            proxy_set_header    X-Real-IP         $remote_addr;
+            proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header    X-Forwarded-Proto $scheme;
+        }
+    }
